@@ -466,7 +466,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ni" onclick="window.open('jornada.html','_blank')" id="nv-jornada"><span class="ni-ico">📈</span><span>Jornada</span></div>
     </nav>
     <div class="sbfoot">
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.0 — Mai 2026</div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.5 — Mai 2026</div>
       <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
     </div>
   </aside>
@@ -1765,14 +1765,50 @@ async function bzGerarTodos(){
         const data=await resp.json();
         if(data.error){showToast('Erro IA parte '+(pi+1)+': '+data.error.message,'err');return;}
         let txt=data.content[0].text.replace(/```json|```/g,'').trim();
-        const jm=txt.match(/\{[\s\S]*\}/);
-        if(!jm){showToast('Erro ao interpretar resposta da IA (parte '+(pi+1)+'). Tente com menos texto.','err');console.error('Resposta bruta:',txt);return;}
+        // Tentar extrair JSON mesmo com texto antes/depois
+        let jsonStr = null;
+        // Primeiro tenta extrair bloco de código JSON
+        const codeMatch = txt.match(/```json([\s\S]*?)```/);
+        if(codeMatch) jsonStr = codeMatch[1].trim();
+        // Se não, tenta encontrar o objeto JSON diretamente
+        if(!jsonStr){
+          const start = txt.indexOf('{"blocos"');
+          const start2 = txt.indexOf('{ "blocos"');
+          const startIdx = start >= 0 ? start : start2 >= 0 ? start2 : -1;
+          if(startIdx >= 0) jsonStr = txt.substring(startIdx);
+        }
+        // Fallback: qualquer { ... }
+        if(!jsonStr){ const jm = txt.match(/\{[\s\S]*\}/); if(jm) jsonStr = jm[0]; }
+        if(!jsonStr){
+          showToast('Parte '+(pi+1)+' não retornou JSON. Salvando partes concluídas...','err');
+          console.error('Resposta bruta parte '+(pi+1)+':', txt);
+          break; // Salva o que tiver em vez de abortar tudo
+        }
         try{
-          const res=JSON.parse(jm[0]);
-          todosBlocos=todosBlocos.concat(res.blocos||[]);
+          // Tentar corrigir JSON incompleto (truncado) adicionando fechamento
+          let jsonToParse = jsonStr;
+          try{ JSON.parse(jsonToParse); }
+          catch(e2){
+            // Tentar fechar o JSON incompleto
+            const lastBloco = jsonToParse.lastIndexOf('"bizu"');
+            if(lastBloco > 0){
+              // Encontrar fim do valor de bizu e fechar o JSON
+              const afterBizu = jsonToParse.indexOf('"}', lastBloco);
+              if(afterBizu > 0) jsonToParse = jsonToParse.substring(0, afterBizu+2) + ']}';
+            }
+          }
+          const res = JSON.parse(jsonToParse);
+          todosBlocos = todosBlocos.concat(res.blocos||[]);
         }catch(pe){
-          showToast('Erro no JSON da parte '+(pi+1)+'. Tente novamente.','err');
-          console.error('JSON inválido:',jm[0]);return;
+          // Se ainda falhar, tentar extrair blocos individuais com regex
+          console.warn('JSON da parte '+(pi+1)+' incompleto, tentando extração parcial...');
+          const blocoMatches = jsonStr.matchAll(/"pgIni":\s*(\d+).*?"pgFim":\s*(\d+).*?"titulo":\s*"([^"]+)"/gs);
+          let encontrou = false;
+          for(const m of blocoMatches){
+            todosBlocos.push({pgIni:parseInt(m[1]),pgFim:parseInt(m[2]),titulo:m[3],assuntos:[],bizu:'[Bizu truncado — use o botão + Bloco para adicionar manualmente]',concluido:false});
+            encontrou = true;
+          }
+          if(!encontrou){ showToast('Parte '+(pi+1)+' com erro de JSON. Partes anteriores foram salvas.','err'); break; }
         }
         document.getElementById('bz-gen-bar').style.width=(Math.round(((pi+1)/totPartes)*75)+10)+'%';
       }
