@@ -313,7 +313,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <div class="ni" onclick="P('mats')" id="nv-mats"><span class="ni-ico">📚</span><span>Matérias</span></div>
     <div class="ni" onclick="P('rev')" id="nv-rev"><span class="ni-ico">🔄</span><span>Revisão Espaçada</span><span class="nbdg hidden" id="bdg-rev">0</span></div>
     <div class="nsec">Inteligência</div>
-    <div class="ni" onclick="P('bizu')" id="nv-bizu"><span class="ni-ico">⚡</span><span>Bizus</span></div>
+    <div class="ni" onclick="P('bizu')" id="nv-bizu"><span class="ni-ico">⚡</span><span>Matérias &amp; Bizus</span></div>
     <div class="ni" onclick="P('qq')" id="nv-qq"><span class="ni-ico">📝</span><span>Questões</span></div>
     <div class="ni" onclick="P('erros')" id="nv-erros"><span class="ni-ico">❌</span><span>Caderno de Erros</span><span class="nbdg hidden" id="bdg-err" style="background:var(--org)">0</span></div>
     <div class="ni" onclick="P('met')" id="nv-met"><span class="ni-ico">📈</span><span>Métricas</span></div>
@@ -443,7 +443,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 <!-- BIZUS -->
 <div id="pg-bizu" class="hidden">
   <div class="hdr">
-    <div class="hdr-l"><div class="pgt">Bizus</div><div class="pgs">IA lê seu PDF e divide em metas de estudo</div></div>
+    <div class="hdr-l"><div class="pgt">Matérias &amp; Bizus</div><div class="pgs">Cadastre seu PDF, a IA divide em metas e gera os bizus</div></div>
     <div class="hdr-r">
       <select class="fs" id="bz-filtro-pdf" onchange="rBizu()" style="font-size:11px;padding:4px 8px;width:auto"><option value="">Todos os PDFs</option></select>
       <button class="btn btn-g btn-sm" onclick="abrirGeradorBizu()">+ Novo PDF</button>
@@ -465,14 +465,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         A IA vai ler o PDF completo, dividir em blocos de estudo respeitando os assuntos, gerar um bizu por bloco e salvar tudo no Firestore. Você estuda bloco a bloco e o próximo bizu desbloqueia automaticamente.
       </div>
       <div class="fg">
-        <label class="flbl">① Selecione o PDF físico</label>
+        <label class="flbl">① Selecione o(s) arquivo(s) PDF</label>
+        <div class="ibox mb" style="margin-bottom:8px">⚠️ A API aceita no máximo <strong style="color:var(--txt)">100 páginas por arquivo</strong>. Se seu PDF tiver mais de 100 páginas, divida em partes e faça upload de todas aqui. Ex: PDF parte 1 (pág. 1–100) + PDF parte 2 (pág. 101–200).</div>
         <div id="bz-upload-area" onclick="document.getElementById('bz-file-input').click()"
           style="border:2px dashed var(--bdr2);border-radius:var(--rad);padding:22px;text-align:center;cursor:pointer;background:var(--sur2);transition:all .2s">
           <div style="font-size:28px;margin-bottom:6px">📄</div>
-          <div style="font-size:12px;color:var(--muted)" id="bz-upload-txt">Clique para selecionar o PDF</div>
-          <div style="font-size:10px;color:var(--dim);margin-top:3px">O arquivo fica apenas no seu navegador</div>
+          <div style="font-size:12px;color:var(--muted)" id="bz-upload-txt">Clique para selecionar o(s) PDF(s)</div>
+          <div style="font-size:10px;color:var(--dim);margin-top:3px">Selecione múltiplos arquivos de uma vez se necessário</div>
         </div>
-        <input type="file" id="bz-file-input" accept=".pdf" style="display:none" onchange="bzCarregarPDF(event)">
+        <input type="file" id="bz-file-input" accept=".pdf" multiple style="display:none" onchange="bzCarregarPDF(event)">
+        <div id="bz-arquivos-lista" style="margin-top:8px;display:none"></div>
       </div>
 
       <div id="bz-form" style="display:none">
@@ -844,9 +846,14 @@ auth.onAuthStateChanged(async (user) => {
         const data = snap.data();
         delete data._ts;
         S = { ...getDefaultState(), ...data };
+        // API key: localStorage tem prioridade (mais confiável)
+        const localKey = localStorage.getItem('fp_apikey');
+        if (localKey) S.apiKey = localKey;
         if (!S.mats || S.mats.length === 0) initMats();
       } else {
         S = getDefaultState();
+        const localKey = localStorage.getItem('fp_apikey');
+        if (localKey) S.apiKey = localKey;
         initMats();
       }
     } catch (e) {
@@ -1252,13 +1259,12 @@ function marcarRev(id){
 }
 
 // ======= BIZU — SISTEMA DE METAS COM PDF =======
-let bzPdfBytes = null;
-let bzPdfNome = '';
-let bzBlocoAtualId = null; // pdfId sendo visto no modal
+let bzPdfPartes = []; // suporta múltiplos arquivos (limite 100 pág/arquivo)
+let bzBlocoAtualId = null;
 
 function abrirGeradorBizu() {
-  bzPdfBytes = null; bzPdfNome = '';
-  document.getElementById('bz-upload-txt').textContent = 'Clique para selecionar o PDF';
+  bzPdfPartes = [];
+  document.getElementById('bz-upload-txt').textContent = 'Clique para selecionar o(s) PDF(s)';
   document.getElementById('bz-upload-area').style.borderColor = 'var(--bdr2)';
   document.getElementById('bz-upload-area').style.background = 'var(--sur2)';
   document.getElementById('bz-form').style.display = 'none';
@@ -1268,166 +1274,110 @@ function abrirGeradorBizu() {
   document.getElementById('bz-calc-info').style.display = 'none';
   document.getElementById('bz-gen-progress').style.display = 'none';
   document.getElementById('btn-bz-gerar').style.display = 'block';
-  // Popular matérias
+  document.getElementById('bz-arquivos-lista').style.display = 'none';
+  document.getElementById('bz-arquivos-lista').innerHTML = '';
   const sel = document.getElementById('bz-mat-sel');
   sel.innerHTML = (S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');
-  // Popular nome com sugestão
   document.getElementById('bz-nome-pdf').value = '';
   document.getElementById('mod-gerador-bizu').classList.remove('hidden');
 }
 
 function bzCarregarPDF(event) {
-  const file = event.target.files[0];
-  if (!file || file.type !== 'application/pdf') { showToast('Selecione um PDF válido!','err'); return; }
-  const txt = document.getElementById('bz-upload-txt');
-  txt.textContent = '⏳ Carregando...';
-  const reader = new FileReader();
-  reader.onload = e => {
-    bzPdfBytes = e.target.result.split(',')[1];
-    bzPdfNome = file.name;
-    txt.textContent = `✅ ${file.name} (${(file.size/1024/1024).toFixed(1)}MB)`;
-    document.getElementById('bz-upload-area').style.borderColor = 'var(--grn)';
-    document.getElementById('bz-upload-area').style.background = 'var(--grndim)';
-    document.getElementById('bz-form').style.display = 'block';
-    // Sugerir nome
-    if (!document.getElementById('bz-nome-pdf').value) {
-      document.getElementById('bz-nome-pdf').value = file.name.replace('.pdf','');
-    }
-    showToast('PDF pronto!','ok');
-  };
-  reader.onerror = () => showToast('Erro ao ler o PDF','err');
-  reader.readAsDataURL(file);
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  bzPdfPartes = [];
+  const lista = document.getElementById('bz-arquivos-lista');
+  lista.style.display = 'block';
+  lista.innerHTML = '<div style="font-size:10px;color:var(--muted);margin-bottom:4px">Carregando...</div>';
+  let carregados = 0;
+  const resultados = new Array(files.length);
+  files.forEach((file, idx) => {
+    if (file.type !== 'application/pdf') { showToast(`${file.name} não é um PDF`,'err'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      resultados[idx] = { nome: file.name, bytes: e.target.result.split(',')[1], tamanho: file.size };
+      carregados++;
+      if (carregados === files.length) {
+        bzPdfPartes = resultados.filter(Boolean);
+        if (!document.getElementById('bz-nome-pdf').value)
+          document.getElementById('bz-nome-pdf').value = bzPdfPartes[0].nome.replace('.pdf','');
+        document.getElementById('bz-upload-txt').textContent = `✅ ${bzPdfPartes.length} arquivo(s) prontos`;
+        document.getElementById('bz-upload-area').style.borderColor = 'var(--grn)';
+        document.getElementById('bz-upload-area').style.background = 'var(--grndim)';
+        lista.innerHTML = bzPdfPartes.map((p,i) =>
+          `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--sur2);border:1px solid var(--bdr);border-radius:6px;margin-bottom:4px;font-size:11px">
+            <span>📄</span><span style="flex:1;color:var(--txt)">${p.nome}</span>
+            <span style="color:var(--muted)">${(p.tamanho/1024/1024).toFixed(1)}MB</span>
+            <span class="badge bp">Parte ${i+1}</span>
+          </div>`).join('');
+        document.getElementById('bz-form').style.display = 'block';
+        showToast(`${bzPdfPartes.length} arquivo(s) carregado(s)!`,'ok');
+      }
+    };
+    reader.onerror = () => showToast(`Erro ao ler ${file.name}`,'err');
+    reader.readAsDataURL(file);
+  });
 }
 
 async function bzGerarTodos() {
-  if (!S.apiKey) { alert('Configure sua API key em Configurações!'); return; }
-  if (!bzPdfBytes) { showToast('Faça o upload do PDF!','err'); return; }
+  if (!S.apiKey) { alert('Configure sua API key!'); return; }
+  if (!bzPdfPartes.length) { showToast('Faca o upload do PDF!','err'); return; }
   const nome = document.getElementById('bz-nome-pdf').value.trim();
   const matId = parseInt(document.getElementById('bz-mat-sel').value);
   const pgIni = parseInt(document.getElementById('bz-pg-ini').value);
   const pgFim = parseInt(document.getElementById('bz-pg-fim').value);
   if (!nome) { showToast('Informe o nome do PDF!','err'); return; }
-  if (!pgIni || !pgFim || pgFim <= pgIni) { showToast('Informe as páginas corretamente!','err'); return; }
+  if (!pgIni || !pgFim || pgFim <= pgIni) { showToast('Informe as paginas!','err'); return; }
   const mat = (S.mats||[]).find(m=>m.id===matId);
-  if (!mat) { showToast('Selecione uma matéria!','err'); return; }
-
-  // Calcular blocos estimados
+  if (!mat) { showToast('Selecione uma materia!','err'); return; }
   const hPorMat = (S.horasDia||2) / Math.max(1, S.matsPerDay||2);
   const pgPorSessao = Math.round(hPorMat * (S.pph||15));
-  const totalPags = pgFim - pgIni + 1;
-  const nBlocos = Math.ceil(totalPags / pgPorSessao);
-
   document.getElementById('btn-bz-gerar').style.display = 'none';
   document.getElementById('bz-gen-progress').style.display = 'block';
-  document.getElementById('bz-gen-txt').textContent = `A IA está lendo ${totalPags} páginas e dividindo em ${nBlocos} blocos de estudo...`;
-  document.getElementById('bz-gen-bar').style.width = '20%';
-
-  const prompt = `Você está analisando um PDF de apostila para concursos fiscais.
-Matéria: ${mat.nome}
-Páginas de teoria: ${pgIni} a ${pgFim} (total: ${totalPags} páginas)
-Páginas por sessão de estudo: aproximadamente ${pgPorSessao} páginas
-
-TAREFA: Leia o conteúdo completo dessas páginas e divida em blocos de estudo respeitando os assuntos. IMPORTANTE: não corte um assunto no meio — sempre termine o bloco no final de um tópico/capítulo, mesmo que ultrapasse ou fique aquém das ${pgPorSessao} páginas estimadas.
-
-Para cada bloco, gere um BIZU estratégico completo.
-
-Retorne APENAS um JSON válido, sem texto antes ou depois, no seguinte formato:
-{
-  "blocos": [
-    {
-      "pgIni": 5,
-      "pgFim": 28,
-      "titulo": "Título descritivo deste bloco",
-      "assuntos": ["Assunto 1", "Assunto 2"],
-      "bizu": "Conteúdo completo do bizu aqui, com **negrito** para termos-chave, macetes, pegadinhas de bancas (CESPE, FCC), artigos relevantes (CTN, CF/88). Seja denso e útil para revisão rápida. Mínimo 200 palavras por bloco."
-    }
-  ]
-}
-
-Regras importantes:
-- Respeite SEMPRE o fim de assunto/tópico para delimitar cada bloco
-- Cada bizu deve ter no mínimo 200 palavras com conteúdo real do PDF
-- Use **negrito** para termos-chave
-- Inclua pegadinhas de bancas relacionadas ao conteúdo real
-- O último bloco sempre termina na página ${pgFim}`;
-
+  let todosBlocos = [];
   try {
-    document.getElementById('bz-gen-bar').style.width = '40%';
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': S.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: bzPdfBytes } },
-            { type: 'text', text: prompt }
-          ]
-        }]
-      })
-    });
+    for (let i = 0; i < bzPdfPartes.length; i++) {
+      const parte = bzPdfPartes[i];
+      const pct = Math.round((i / bzPdfPartes.length) * 70) + 10;
+      document.getElementById('bz-gen-bar').style.width = pct + '%';
+      document.getElementById('bz-gen-txt').textContent = bzPdfPartes.length > 1
+        ? 'Processando parte ' + (i+1) + ' de ' + bzPdfPartes.length + '...'
+        : 'A IA esta lendo o PDF e dividindo em blocos...';
+      const prompt = 'Voce esta analisando ' + (bzPdfPartes.length > 1 ? 'a PARTE ' + (i+1) + ' de ' + bzPdfPartes.length + ' de um PDF' : 'um PDF') + ' de apostila para concursos fiscais.
+Materia: ' + mat.nome + '
+Paginas de teoria total: ' + pgIni + ' a ' + pgFim + '
+Paginas por sessao: aproximadamente ' + pgPorSessao + '
 
-    document.getElementById('bz-gen-bar').style.width = '80%';
-    const data = await resp.json();
-    if (data.error) { showToast('Erro da IA: ' + data.error.message,'err'); return; }
+TAREFA: Leia e divida em blocos respeitando fim de assunto. Nunca corte um topico no meio.
+' + (i > 0 ? 'Continue a numeracao de paginas do PDF original.' : '') + '
 
-    let txt = data.content[0].text.replace(/```json|```/g,'').trim();
-    const resultado = JSON.parse(txt);
-    const blocos = resultado.blocos;
-
-    document.getElementById('bz-gen-bar').style.width = '90%';
-    document.getElementById('bz-gen-txt').textContent = `✅ ${blocos.length} blocos gerados! Salvando no Firestore...`;
-
-    // Criar entrada no array de bizuPDFs
-    if (!S.bizuPDFs) S.bizuPDFs = [];
-    const novoPdfBizu = {
-      id: Date.now(),
-      nome,
-      matId,
-      matNome: mat.nome,
-      pgIni,
-      pgFim,
-      criadoEm: new Date().toISOString(),
-      blocoAtual: 0, // índice do bloco liberado
-      blocos: blocos.map((b, i) => ({
-        idx: i,
-        pgIni: b.pgIni,
-        pgFim: b.pgFim,
-        titulo: b.titulo,
-        assuntos: b.assuntos || [],
-        bizu: b.bizu,
-        concluido: false,
-        concluidoEm: null
-      }))
-    };
-
-    S.bizuPDFs.push(novoPdfBizu);
-    // Também cadastrar como PDF de estudo se não existir
-    if (!S.pdfs) S.pdfs = [];
-    const jaExiste = S.pdfs.find(p => p.nome === nome && p.matId === matId);
-    if (!jaExiste) {
-      S.pdfs.push({
-        id: Date.now()+1, nome, matId,
-        pgTot: pgFim, pgTeoria: pgFim, pgAtual: pgIni,
-        fase: 'teoria', ordem: S.pdfs.length+1,
-        pph: S.pph||15, obs: '', tecResultados: []
+Retorne APENAS JSON valido:
+{"blocos":[{"pgIni":5,"pgFim":28,"titulo":"Titulo","assuntos":["A1"],"bizu":"Bizu completo com **negrito**, macetes, pegadinhas CESPE/FCC, artigos CTN/CF88. Minimo 200 palavras."}]}';
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},{type:'text',text:prompt}]}]})
       });
+      const data = await resp.json();
+      if (data.error) { showToast('Erro IA parte '+(i+1)+': '+data.error.message,'err'); return; }
+      let txt = data.content[0].text.replace(/```json|```/g,'').trim();
+      const res = JSON.parse(txt);
+      todosBlocos = todosBlocos.concat(res.blocos || []);
     }
+    document.getElementById('bz-gen-bar').style.width = '90%';
+    document.getElementById('bz-gen-txt').textContent = todosBlocos.length + ' blocos gerados! Salvando...';
+    if (!S.bizuPDFs) S.bizuPDFs = [];
+    S.bizuPDFs.push({id:Date.now(),nome,matId,matNome:mat.nome,pgIni,pgFim,nPartes:bzPdfPartes.length,criadoEm:new Date().toISOString(),blocoAtual:0,blocos:todosBlocos.map((b,i)=>({idx:i,pgIni:b.pgIni,pgFim:b.pgFim,titulo:b.titulo,assuntos:b.assuntos||[],bizu:b.bizu,concluido:false,concluidoEm:null}))});
+    if (!S.pdfs) S.pdfs = [];
+    if (!S.pdfs.find(p=>p.nome===nome&&p.matId===matId)) S.pdfs.push({id:Date.now()+1,nome,matId,pgTot:pgFim,pgTeoria:pgFim,pgAtual:pgIni,fase:'teoria',ordem:S.pdfs.length+1,pph:S.pph||15,obs:'',tecResultados:[]});
     save();
     document.getElementById('bz-gen-bar').style.width = '100%';
     fecharMod('mod-gerador-bizu');
     rBizu();
-    showToast(`✅ ${blocos.length} bizus gerados e salvos!`,'ok');
+    showToast(todosBlocos.length + ' bizus gerados e salvos!','ok');
   } catch(e) {
     console.error(e);
-    showToast('Erro ao processar. Verifique sua API key e tente novamente.','err');
+    showToast('Erro ao processar. Verifique sua API key.','err');
     document.getElementById('btn-bz-gerar').style.display = 'block';
     document.getElementById('bz-gen-progress').style.display = 'none';
   }
@@ -1706,7 +1656,17 @@ function rCfg(){
   document.getElementById('cfg-extra').value=S.extraMin||30;document.getElementById('cfg-mats').value=S.matsPerDay||2;
   document.getElementById('cfg-pph').value=S.pph||15;document.getElementById('cfg-qtec').value=S.qtec||20;
 }
-function salvarKey(){S.apiKey=document.getElementById('cfg-key').value.trim();save();const el=document.getElementById('key-ok');el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),2000);showToast('API key salva!');}
+function salvarKey(){
+  const key = document.getElementById('cfg-key').value.trim();
+  S.apiKey = key;
+  // Salva no localStorage do navegador (persiste entre sessões)
+  localStorage.setItem('fp_apikey', key);
+  save();
+  const el = document.getElementById('key-ok');
+  el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'),2000);
+  showToast('API key salva!');
+}
 function salvarCfg(){
   S.horasDia=parseFloat(document.getElementById('cfg-hs').value)||2;S.horasFds=parseFloat(document.getElementById('cfg-hf').value)||2;
   S.extraMin=parseInt(document.getElementById('cfg-extra').value)||30;S.matsPerDay=parseInt(document.getElementById('cfg-mats').value)||2;
