@@ -462,8 +462,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="nsec">IA &amp; Config</div>
       <div class="ni" onclick="P('chat')" id="nv-chat"><span class="ni-ico">🤖</span><span>IA Tutora</span></div>
       <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
+      <div class="nsec">Extras</div>
+      <div class="ni" onclick="window.open('jornada.html','_blank')" id="nv-jornada"><span class="ni-ico">📈</span><span>Jornada</span></div>
     </nav>
-    <div class="sbfoot"><button class="logout-btn" onclick="logout()">↩ Sair da conta</button></div>
+    <div class="sbfoot">
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.0 — Mai 2026</div>
+      <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
+    </div>
   </aside>
 
   <div class="main">
@@ -1654,7 +1659,10 @@ function bzCarregarPDF(event){
   });
 }
 async function bzGerarTodos(){
-  if(!S.apiKey){alert('Configure sua API key em Configurações!');return;}
+  // Sempre buscar a key mais recente do localStorage
+  const lk = localStorage.getItem('fp_apikey');
+  if (lk) S.apiKey = lk;
+  if(!S.apiKey){alert('Configure sua API key em ⚙️ Configurações!');return;}
   const nome=document.getElementById('bz-nome-pdf').value.trim();
   const matId=parseInt(document.getElementById('bz-mat-sel').value);
   const pgIni=parseInt(document.getElementById('bz-pg-ini').value);
@@ -1671,19 +1679,50 @@ async function bzGerarTodos(){
   try{
     if(bzModoAtual==='texto'){
       const texto=document.getElementById('bz-texto-pdf').value.trim();
-      document.getElementById('bz-gen-txt').textContent='A IA está analisando o texto e gerando bizus estruturados...';
-      const prompt=`Materia: ${mat.nome}. Paginas ${pgIni} a ${pgFim}. Sessao ~${pgPorSessao} pag.
-Divida o texto abaixo em blocos por assunto/topico. Para cada bloco gere um bizu COMPLETO com estrutura hierarquica numerada (1, 1.1, 1.2...), exemplos, macetes e checklist de perguntas ao final.
-JSON: {"blocos":[{"pgIni":1,"pgFim":20,"titulo":"T","assuntos":["A"],"bizu":"# 1. TITULO\\n\\nConteudo completo hierarquico com **negrito**, exemplos, macetes CESPE/FCC, artigos CTN CF88.\\n\\n## Checklist\\n1. Pergunta?\\nR: Resposta"}]}
-
-TEXTO:
-${texto.substring(0,120000)}`;
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
-      document.getElementById('bz-gen-bar').style.width='70%';
-      const data=await resp.json();if(data.error){showToast('Erro IA: '+data.error.message,'err');return;}
-      let txt=data.content[0].text.replace(/```json|```/g,'').trim();
-      const jm=txt.match(/\{[\s\S]*\}/);if(jm)txt=jm[0];
-      todosBlocos=JSON.parse(txt).blocos||[];
+      // Dividir texto em partes de ~30k chars para não estourar limites
+      const PARTE_MAX = 30000;
+      const partesTxt = [];
+      for(let pos=0; pos<texto.length; pos+=PARTE_MAX){
+        // Tentar cortar no fim de parágrafo mais próximo
+        let fim = Math.min(pos+PARTE_MAX, texto.length);
+        if(fim < texto.length){
+          const corte = texto.lastIndexOf('\n\n', fim);
+          if(corte > pos + 10000) fim = corte;
+        }
+        partesTxt.push(texto.substring(pos, fim));
+        if(fim === texto.length) break;
+      }
+      const totPartes = partesTxt.length;
+      for(let pi=0; pi<totPartes; pi++){
+        const pct = Math.round((pi/totPartes)*75)+10;
+        document.getElementById('bz-gen-bar').style.width=pct+'%';
+        document.getElementById('bz-gen-txt').textContent = totPartes>1
+          ? 'Processando parte '+(pi+1)+' de '+totPartes+' do texto...'
+          : 'A IA está analisando o texto e gerando bizus...';
+        const pgParte = Math.round((pgFim-pgIni)/totPartes);
+        const pgIniParte = pgIni + pi*pgParte;
+        const pgFimParte = pi===totPartes-1 ? pgFim : pgIniParte+pgParte-1;
+        const prompt = 'Materia: '+mat.nome+'. Paginas '+pgIniParte+' a '+pgFimParte+'. Sessao ~'+pgPorSessao+' pag.'
+          +(totPartes>1?' Parte '+(pi+1)+' de '+totPartes+' do texto total.':'')
+          +' Divida em blocos por assunto respeitando fim de topico.'
+          +' Para cada bloco gere bizu hierarquico (1, 1.1, 1.2...) com exemplos, macetes CESPE/FCC, artigos CTN/CF88 e checklist ao final.'
+          +' JSON: {"blocos":[{"pgIni":'+pgIniParte+',"pgFim":'+pgFimParte+',"titulo":"T","assuntos":["A"],"bizu":"# 1. TITULO\n\nConteudo hierarquico **negrito** exemplos macetes.\n\n## Checklist\n1. Pergunta?\nR: Resposta"}]}'
+          +'\n\nTEXTO:\n'+partesTxt[pi];
+        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
+        const data=await resp.json();
+        if(data.error){showToast('Erro IA parte '+(pi+1)+': '+data.error.message,'err');return;}
+        let txt=data.content[0].text.replace(/```json|```/g,'').trim();
+        const jm=txt.match(/\{[\s\S]*\}/);
+        if(!jm){showToast('Erro ao interpretar resposta da IA (parte '+(pi+1)+'). Tente com menos texto.','err');console.error('Resposta bruta:',txt);return;}
+        try{
+          const res=JSON.parse(jm[0]);
+          todosBlocos=todosBlocos.concat(res.blocos||[]);
+        }catch(pe){
+          showToast('Erro no JSON da parte '+(pi+1)+'. Tente novamente.','err');
+          console.error('JSON inválido:',jm[0]);return;
+        }
+        document.getElementById('bz-gen-bar').style.width=(Math.round(((pi+1)/totPartes)*75)+10)+'%';
+      }
     } else {
       for(let i=0;i<bzPdfPartes.length;i++){
         const parte=bzPdfPartes[i];
@@ -1708,8 +1747,13 @@ ${texto.substring(0,120000)}`;
     if(!S.pdfs)S.pdfs=[];
     if(!S.pdfs.find(p=>p.nome===nome&&p.matId===matId))S.pdfs.push({id:Date.now()+1,nome,matId,pgTot:pgFim,pgTeoria:pgFim,pgAtual:pgIni,fase:'teoria',ordem:S.pdfs.length+1,pph:S.pph||15,obs:'',tecResultados:[]});
     save();document.getElementById('bz-gen-bar').style.width='100%';fecharMod('mod-gerador-bizu');rBizu();showToast(todosBlocos.length+' bizus gerados e salvos!','ok');
-  }catch(e){console.error(e);showToast('Erro ao processar. Verifique sua API key.','err');}
-  document.getElementById('btn-bz-gerar').style.display='block';document.getElementById('bz-gen-progress').style.display='none';
+  }catch(e){
+    console.error('Erro bizu:', e);
+    const msg = e?.message || String(e);
+    showToast('Erro: ' + msg.substring(0,120), 'err');
+  }
+  document.getElementById('btn-bz-gerar').style.display='block';
+  document.getElementById('bz-gen-progress').style.display='none';
 }
 function rBizu(){
   const fp=document.getElementById('bz-filtro-pdf');const pdfs=S.bizuPDFs||[];
