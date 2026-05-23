@@ -1299,11 +1299,9 @@ function marcarRev(id){
 }
 
 // ======= BIZU — SISTEMA DE METAS COM PDF =======
-let bzPdfPartes = []; // suporta múltiplos arquivos (limite 100 pág/arquivo)
-let bzBlocoAtualId = null;
-
-let bzModoAtual = 'upload'; // 'upload' ou 'texto'
 let bzPdfPartes = [];
+let bzBlocoAtualId = null;
+let bzModoAtual = 'upload';
 
 function bzSetModo(modo) {
   bzModoAtual = modo;
