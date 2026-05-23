@@ -459,13 +459,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
   <div class="modal modal-lg">
     <div class="mtitle">⚡ Gerar Bizus — Nova Matéria</div>
 
-    <div class="ibox org mb">
-      📋 <strong style="color:var(--txt)">Como funciona:</strong> Abra seu PDF, selecione e copie o texto das páginas de teoria, cole aqui. A IA divide em blocos de estudo por assunto e gera um bizu por bloco. Os bizus ficam salvos para sempre no Firestore.
-    </div>
-
+    <!-- DADOS COMUNS -->
     <div class="frow">
       <div class="fg">
-        <label class="flbl">① Nome deste PDF / Matéria</label>
+        <label class="flbl">① Nome deste PDF</label>
         <input type="text" class="fi" id="bz-nome-pdf" placeholder="Ex: Dir. Tributário — PDF 01 (Estratégia)">
       </div>
       <div class="fg">
@@ -473,7 +470,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <select class="fs" id="bz-mat-sel"></select>
       </div>
     </div>
-
     <div class="frow">
       <div class="fg">
         <label class="flbl">② Página inicial da teoria</label>
@@ -485,28 +481,64 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       </div>
     </div>
 
+    <!-- SELETOR DE MODO -->
     <div class="fg">
-      <label class="flbl">③ Cole o texto das páginas de teoria</label>
-      <div class="ibox mb" style="margin-bottom:6px">
-        💡 Abra o PDF → selecione todo o texto das páginas de teoria → Ctrl+C → cole aqui. Funciona melhor que upload e sem limitações de tamanho. Para PDFs muito grandes, cole em partes e gere os bizus em sessões separadas.
+      <label class="flbl">③ Como fornecer o conteúdo?</label>
+      <div style="display:flex;gap:8px">
+        <div id="modo-btn-upload" onclick="bzSetModo('upload')"
+          style="flex:1;padding:12px;border-radius:var(--rad);border:2px solid var(--gold);background:var(--gglow);cursor:pointer;text-align:center;transition:all .2s">
+          <div style="font-size:20px;margin-bottom:4px">📄</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gold)">Upload do PDF</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Enviar o arquivo diretamente</div>
+        </div>
+        <div id="modo-btn-texto" onclick="bzSetModo('texto')"
+          style="flex:1;padding:12px;border-radius:var(--rad);border:2px solid var(--bdr);background:var(--sur2);cursor:pointer;text-align:center;transition:all .2s">
+          <div style="font-size:20px;margin-bottom:4px">📋</div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted)">Colar o Texto</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Copiar e colar do PDF</div>
+        </div>
       </div>
-      <textarea class="fta" id="bz-texto-pdf" style="min-height:180px;font-size:11px" placeholder="Cole aqui o texto copiado do seu PDF...&#10;&#10;Exemplo: selecione as páginas 5 a 94 no PDF, copie (Ctrl+A ou seleção manual) e cole aqui."></textarea>
+    </div>
+
+    <!-- MODO UPLOAD -->
+    <div id="bz-modo-upload">
+      <div class="ibox mb" style="margin-bottom:8px">
+        📄 <strong style="color:var(--txt)">Upload direto:</strong> Funciona para PDFs de até ~50 páginas por arquivo. Para PDFs maiores, divida em partes usando <strong style="color:var(--gold)">ilovepdf.com</strong> e selecione todos os arquivos de uma vez.
+      </div>
+      <div id="bz-upload-area" onclick="document.getElementById('bz-file-input').click()"
+        style="border:2px dashed var(--bdr2);border-radius:var(--rad);padding:20px;text-align:center;cursor:pointer;background:var(--sur2);transition:all .2s">
+        <div style="font-size:26px;margin-bottom:5px">📄</div>
+        <div style="font-size:12px;color:var(--muted)" id="bz-upload-txt">Clique para selecionar o(s) PDF(s)</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:3px">Selecione múltiplos arquivos de uma vez se necessário</div>
+      </div>
+      <input type="file" id="bz-file-input" accept=".pdf" multiple style="display:none" onchange="bzCarregarPDF(event)">
+      <div id="bz-arquivos-lista" style="margin-top:7px;display:none"></div>
+    </div>
+
+    <!-- MODO TEXTO -->
+    <div id="bz-modo-texto" style="display:none">
+      <div class="ibox mb" style="margin-bottom:6px">
+        📋 <strong style="color:var(--txt)">Colar texto:</strong> Abra o PDF → selecione todo o texto das páginas de teoria → Ctrl+C → cole aqui. Funciona sem limitações de tamanho e é mais econômico em tokens.
+      </div>
+      <textarea class="fta" id="bz-texto-pdf" style="min-height:160px;font-size:11px"
+        placeholder="Cole aqui o texto copiado do seu PDF...&#10;&#10;Dica: abra o PDF, pressione Ctrl+A para selecionar tudo, Ctrl+C para copiar e cole aqui."></textarea>
       <div id="bz-texto-count" style="font-size:9px;color:var(--muted);margin-top:3px">0 caracteres</div>
     </div>
 
-    <button class="btn btn-g" onclick="bzGerarTodos()" id="btn-bz-gerar" style="width:100%">
-      ⚡ Gerar Bizus com IA
-    </button>
-
-    <div id="bz-gen-progress" style="display:none;margin-top:12px">
-      <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)">
-        <div class="spin" style="width:18px;height:18px;border-width:2px"></div>
-        <span id="bz-gen-txt">A IA está analisando o conteúdo e gerando os bizus...</span>
+    <div style="margin-top:14px">
+      <button class="btn btn-g" onclick="bzGerarTodos()" id="btn-bz-gerar" style="width:100%">
+        ⚡ Gerar Bizus com IA
+      </button>
+      <div id="bz-gen-progress" style="display:none;margin-top:10px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)">
+          <div class="spin" style="width:18px;height:18px;border-width:2px"></div>
+          <span id="bz-gen-txt">A IA está analisando e gerando os bizus...</span>
+        </div>
+        <div class="pbar" style="margin-top:8px"><div class="pfill g" id="bz-gen-bar" style="width:0%;transition:width 1s"></div></div>
       </div>
-      <div class="pbar" style="margin-top:8px"><div class="pfill g" id="bz-gen-bar" style="width:0%;transition:width 1s"></div></div>
     </div>
 
-    <div class="mfoot" style="margin-top:14px">
+    <div class="mfoot" style="margin-top:12px">
       <button class="btn btn-o" onclick="fecharMod('mod-gerador-bizu')" style="flex:1">Cancelar</button>
     </div>
   </div>
@@ -1270,7 +1302,26 @@ function marcarRev(id){
 let bzPdfPartes = []; // suporta múltiplos arquivos (limite 100 pág/arquivo)
 let bzBlocoAtualId = null;
 
+let bzModoAtual = 'upload'; // 'upload' ou 'texto'
+let bzPdfPartes = [];
+
+function bzSetModo(modo) {
+  bzModoAtual = modo;
+  const isUpload = modo === 'upload';
+  // Botões
+  document.getElementById('modo-btn-upload').style.border = isUpload ? '2px solid var(--gold)' : '2px solid var(--bdr)';
+  document.getElementById('modo-btn-upload').style.background = isUpload ? 'var(--gglow)' : 'var(--sur2)';
+  document.getElementById('modo-btn-upload').querySelector('div:nth-child(2)').style.color = isUpload ? 'var(--gold)' : 'var(--muted)';
+  document.getElementById('modo-btn-texto').style.border = !isUpload ? '2px solid var(--gold)' : '2px solid var(--bdr)';
+  document.getElementById('modo-btn-texto').style.background = !isUpload ? 'var(--gglow)' : 'var(--sur2)';
+  document.getElementById('modo-btn-texto').querySelector('div:nth-child(2)').style.color = !isUpload ? 'var(--gold)' : 'var(--muted)';
+  // Painéis
+  document.getElementById('bz-modo-upload').style.display = isUpload ? 'block' : 'none';
+  document.getElementById('bz-modo-texto').style.display = !isUpload ? 'block' : 'none';
+}
+
 function abrirGeradorBizu() {
+  bzPdfPartes = [];
   const sel = document.getElementById('bz-mat-sel');
   sel.innerHTML = (S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');
   document.getElementById('bz-nome-pdf').value = '';
@@ -1278,126 +1329,180 @@ function abrirGeradorBizu() {
   document.getElementById('bz-pg-fim').value = '';
   document.getElementById('bz-texto-pdf').value = '';
   document.getElementById('bz-texto-count').textContent = '0 caracteres';
+  document.getElementById('bz-upload-txt').textContent = 'Clique para selecionar o(s) PDF(s)';
+  document.getElementById('bz-upload-area').style.borderColor = 'var(--bdr2)';
+  document.getElementById('bz-upload-area').style.background = 'var(--sur2)';
+  document.getElementById('bz-arquivos-lista').style.display = 'none';
+  document.getElementById('bz-arquivos-lista').innerHTML = '';
+  document.getElementById('bz-file-input').value = '';
   document.getElementById('bz-gen-progress').style.display = 'none';
   document.getElementById('btn-bz-gerar').style.display = 'block';
+  bzSetModo('upload'); // começa em modo upload
   document.getElementById('mod-gerador-bizu').classList.remove('hidden');
-  // Contador de caracteres
+  // Contador de caracteres para modo texto
   document.getElementById('bz-texto-pdf').oninput = function() {
     const n = this.value.length;
     const tokens = Math.round(n/4);
-    const cor = tokens > 150000 ? 'var(--red)' : tokens > 80000 ? 'var(--org)' : 'var(--grn)';
     document.getElementById('bz-texto-count').innerHTML =
       n.toLocaleString() + ' caracteres (~' + tokens.toLocaleString() + ' tokens) ' +
-      (tokens > 150000 ? '<strong style="color:var(--red)">⚠️ Muito grande! Cole menos texto.</strong>' :
+      (tokens > 150000 ? '<strong style="color:var(--red)">⚠️ Muito grande! Cole menos páginas.</strong>' :
        tokens > 80000 ? '<span style="color:var(--org)">Grande — pode funcionar</span>' :
        '<span style="color:var(--grn)">✓ Tamanho ok</span>');
   };
 }
 
-function bzGerarTodos() {
+function bzCarregarPDF(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  bzPdfPartes = [];
+  const lista = document.getElementById('bz-arquivos-lista');
+  lista.style.display = 'block';
+  lista.innerHTML = '<div style="font-size:10px;color:var(--muted);margin-bottom:4px">Carregando...</div>';
+  let carregados = 0;
+  const resultados = new Array(files.length);
+  files.forEach((file, idx) => {
+    if (file.type !== 'application/pdf') { showToast(`${file.name} não é um PDF`,'err'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      resultados[idx] = { nome: file.name, bytes: e.target.result.split(',')[1], tamanho: file.size };
+      carregados++;
+      if (carregados === files.length) {
+        bzPdfPartes = resultados.filter(Boolean);
+        if (!document.getElementById('bz-nome-pdf').value)
+          document.getElementById('bz-nome-pdf').value = bzPdfPartes[0].nome.replace('.pdf','');
+        document.getElementById('bz-upload-txt').textContent = `✅ ${bzPdfPartes.length} arquivo(s) prontos`;
+        document.getElementById('bz-upload-area').style.borderColor = 'var(--grn)';
+        document.getElementById('bz-upload-area').style.background = 'var(--grndim)';
+        lista.innerHTML = bzPdfPartes.map((p,i) =>
+          `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--sur2);border:1px solid var(--bdr);border-radius:6px;margin-bottom:4px;font-size:11px">
+            <span>📄</span><span style="flex:1;color:var(--txt)">${p.nome}</span>
+            <span style="color:var(--muted)">${(p.tamanho/1024/1024).toFixed(1)}MB</span>
+            <span class="badge bp">Parte ${i+1}</span>
+          </div>`).join('');
+        showToast(`${bzPdfPartes.length} arquivo(s) carregado(s)!`,'ok');
+      }
+    };
+    reader.onerror = () => showToast(`Erro ao ler ${file.name}`,'err');
+    reader.readAsDataURL(file);
+  });
+}
+
+async function bzGerarTodos() {
   if (!S.apiKey) { alert('Configure sua API key em Configurações!'); return; }
   const nome = document.getElementById('bz-nome-pdf').value.trim();
   const matId = parseInt(document.getElementById('bz-mat-sel').value);
   const pgIni = parseInt(document.getElementById('bz-pg-ini').value);
   const pgFim = parseInt(document.getElementById('bz-pg-fim').value);
-  const texto = document.getElementById('bz-texto-pdf').value.trim();
   if (!nome) { showToast('Informe o nome do PDF!','err'); return; }
   if (!pgIni || !pgFim || pgFim <= pgIni) { showToast('Informe as páginas corretamente!','err'); return; }
-  if (!texto || texto.length < 200) { showToast('Cole o texto das páginas de teoria!','err'); return; }
   const mat = (S.mats||[]).find(m=>m.id===matId);
   if (!mat) { showToast('Selecione uma matéria!','err'); return; }
-
-  // Verificar tamanho estimado
-  const tokens = Math.round(texto.length / 4);
-  if (tokens > 150000) {
-    showToast('Texto muito longo (~' + tokens.toLocaleString() + ' tokens). Cole menos páginas por vez.','err');
-    return;
-  }
 
   const hPorMat = (S.horasDia||2) / Math.max(1, S.matsPerDay||2);
   const pgPorSessao = Math.round(hPorMat * (S.pph||15));
 
+  // Validar conforme o modo
+  if (bzModoAtual === 'texto') {
+    const texto = document.getElementById('bz-texto-pdf').value.trim();
+    if (!texto || texto.length < 200) { showToast('Cole o texto das páginas de teoria!','err'); return; }
+    const tokens = Math.round(texto.length / 4);
+    if (tokens > 150000) { showToast('Texto muito longo. Cole menos páginas por vez.','err'); return; }
+  } else {
+    if (!bzPdfPartes.length) { showToast('Faça o upload do PDF!','err'); return; }
+  }
+
   document.getElementById('btn-bz-gerar').style.display = 'none';
   document.getElementById('bz-gen-progress').style.display = 'block';
-  document.getElementById('bz-gen-txt').textContent = 'A IA está analisando o conteúdo...';
-  document.getElementById('bz-gen-bar').style.width = '20%';
+  document.getElementById('bz-gen-bar').style.width = '15%';
 
-  const prompt = `Você é especialista em concursos fiscais. Analise o texto abaixo (páginas ${pgIni} a ${pgFim} de apostila de ${mat.nome}) e divida em blocos de estudo de ~${pgPorSessao} páginas cada, RESPEITANDO o fim de assuntos/tópicos (nunca corte no meio de um tema).
+  let todosBlocos = [];
 
-Para cada bloco gere um BIZU estratégico completo.
+  try {
+    if (bzModoAtual === 'texto') {
+      // MODO TEXTO: uma única chamada com o texto colado
+      const texto = document.getElementById('bz-texto-pdf').value.trim();
+      document.getElementById('bz-gen-txt').textContent = 'A IA está analisando o texto...';
+      const prompt = 'Materia: ' + mat.nome + '. Paginas ' + pgIni + ' a ' + pgFim + '. Sessao ~' + pgPorSessao + ' pag.' +
+        ' Divida o texto abaixo em blocos respeitando fim de assunto/topico. JSON: {"blocos":[{"pgIni":1,"pgFim":20,"titulo":"T","assuntos":["A"],"bizu":"bizu 200+ palavras **negrito** termos-chave macetes pegadinhas CESPE FCC artigos CTN CF88"}]}' +
+        '
 
-TEXTO DAS PÁGINAS:
-${texto.substring(0, 120000)}
+TEXTO:
+' + texto.substring(0, 120000);
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})
+      });
+      const data = await resp.json();
+      if (data.error) { showToast('Erro IA: ' + data.error.message,'err'); return; }
+      let txt = data.content[0].text.replace(/```json|```/g,'').trim();
+      const jm = txt.match(/\{[\s\S]*\}/); if (jm) txt = jm[0];
+      todosBlocos = JSON.parse(txt).blocos || [];
 
-Retorne APENAS JSON válido:
-{"blocos":[{"pgIni":${pgIni},"pgFim":${pgIni+pgPorSessao-1},"titulo":"Título do bloco","assuntos":["Assunto 1"],"bizu":"Bizu completo com **negrito** para termos-chave, macetes de memorização, pegadinhas CESPE/FCC/CEBRASPE, artigos relevantes do CTN e CF/88. Mínimo 200 palavras."}]}`;
-
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': S.apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  })
-  .then(r => r.json())
-  .then(data => {
-    document.getElementById('bz-gen-bar').style.width = '80%';
-    if (data.error) {
-      showToast('Erro IA: ' + data.error.message, 'err');
-      document.getElementById('btn-bz-gerar').style.display = 'block';
-      document.getElementById('bz-gen-progress').style.display = 'none';
-      return;
+    } else {
+      // MODO UPLOAD: processa cada parte separadamente
+      for (let i = 0; i < bzPdfPartes.length; i++) {
+        const parte = bzPdfPartes[i];
+        const pct = Math.round((i / bzPdfPartes.length) * 70) + 15;
+        document.getElementById('bz-gen-bar').style.width = pct + '%';
+        document.getElementById('bz-gen-txt').textContent = bzPdfPartes.length > 1
+          ? 'Processando parte ' + (i+1) + ' de ' + bzPdfPartes.length + '...'
+          : 'A IA está lendo o PDF...';
+        const tamanhoMB = (parte.bytes.length * 0.75) / (1024*1024);
+        if (tamanhoMB > 15) {
+          showToast('Parte ' + (i+1) + ' muito grande (' + tamanhoMB.toFixed(0) + 'MB). Use PDFs menores (~50 pág).','err');
+          return;
+        }
+        const parteDesc = bzPdfPartes.length > 1 ? 'PARTE ' + (i+1) + ' de ' + bzPdfPartes.length : 'PDF';
+        const contPags = i > 0 ? 'Continue a numeracao de paginas do original.' : '';
+        const prompt = 'Materia: ' + mat.nome + '. ' + parteDesc + '. Paginas totais: ' + pgIni + '-' + pgFim + '. Sessao ~' + pgPorSessao + ' pag. ' + contPags +
+          ' Divida em blocos respeitando fim de assunto. JSON: {"blocos":[{"pgIni":1,"pgFim":20,"titulo":"T","assuntos":["A"],"bizu":"bizu 200+ palavras **negrito** termos-chave macetes pegadinhas CESPE FCC artigos CTN CF88"}]}';
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:[
+            {type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},
+            {type:'text',text:prompt}
+          ]}]})
+        });
+        const data = await resp.json();
+        if (data.error) { showToast('Erro IA parte '+(i+1)+': '+data.error.message,'err'); return; }
+        let txt = data.content[0].text.replace(/```json|```/g,'').trim();
+        const jm = txt.match(/\{[\s\S]*\}/); if (jm) txt = jm[0];
+        todosBlocos = todosBlocos.concat(JSON.parse(txt).blocos || []);
+      }
     }
-    let txt = data.content[0].text.replace(/```json|```/g,'').trim();
-    // Tentar extrair JSON se vier com texto antes/depois
-    const jsonMatch = txt.match(/\{[\s\S]*\}/);
-    if (jsonMatch) txt = jsonMatch[0];
-    const res = JSON.parse(txt);
-    const blocos = res.blocos || [];
 
-    document.getElementById('bz-gen-bar').style.width = '95%';
-    document.getElementById('bz-gen-txt').textContent = blocos.length + ' blocos gerados! Salvando...';
+    document.getElementById('bz-gen-bar').style.width = '90%';
+    document.getElementById('bz-gen-txt').textContent = todosBlocos.length + ' blocos gerados! Salvando...';
 
     if (!S.bizuPDFs) S.bizuPDFs = [];
     S.bizuPDFs.push({
       id: Date.now(), nome, matId, matNome: mat.nome,
-      pgIni, pgFim, criadoEm: new Date().toISOString(),
-      blocoAtual: 0,
-      blocos: blocos.map((b,i) => ({
-        idx: i, pgIni: b.pgIni, pgFim: b.pgFim,
-        titulo: b.titulo, assuntos: b.assuntos||[],
-        bizu: b.bizu, concluido: false, concluidoEm: null
+      pgIni, pgFim, modo: bzModoAtual,
+      criadoEm: new Date().toISOString(), blocoAtual: 0,
+      blocos: todosBlocos.map((b,i) => ({
+        idx:i, pgIni:b.pgIni, pgFim:b.pgFim,
+        titulo:b.titulo, assuntos:b.assuntos||[],
+        bizu:b.bizu, concluido:false, concluidoEm:null
       }))
     });
-
     if (!S.pdfs) S.pdfs = [];
-    if (!S.pdfs.find(p => p.nome===nome && p.matId===matId)) {
-      S.pdfs.push({
-        id: Date.now()+1, nome, matId,
-        pgTot: pgFim, pgTeoria: pgFim, pgAtual: pgIni,
-        fase: 'teoria', ordem: S.pdfs.length+1,
-        pph: S.pph||15, obs: '', tecResultados: []
-      });
+    if (!S.pdfs.find(p=>p.nome===nome&&p.matId===matId)) {
+      S.pdfs.push({id:Date.now()+1,nome,matId,pgTot:pgFim,pgTeoria:pgFim,pgAtual:pgIni,fase:'teoria',ordem:S.pdfs.length+1,pph:S.pph||15,obs:'',tecResultados:[]});
     }
     save();
     document.getElementById('bz-gen-bar').style.width = '100%';
     fecharMod('mod-gerador-bizu');
     rBizu();
-    showToast(blocos.length + ' bizus gerados e salvos!', 'ok');
-  })
-  .catch(e => {
+    showToast(todosBlocos.length + ' bizus gerados e salvos!','ok');
+
+  } catch(e) {
     console.error(e);
-    showToast('Erro de conexão. Tente novamente.', 'err');
-    document.getElementById('btn-bz-gerar').style.display = 'block';
-    document.getElementById('bz-gen-progress').style.display = 'none';
-  });
+    showToast('Erro ao processar. Verifique sua API key.','err');
+  }
+  document.getElementById('btn-bz-gerar').style.display = 'block';
+  document.getElementById('bz-gen-progress').style.display = 'none';
 }
 
 
