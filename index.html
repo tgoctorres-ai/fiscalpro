@@ -466,7 +466,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ni" onclick="window.open('jornada.html','_blank')" id="nv-jornada"><span class="ni-ico">📈</span><span>Jornada</span></div>
     </nav>
     <div class="sbfoot">
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.5 — Mai 2026</div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.6 — Mai 2026</div>
       <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
     </div>
   </aside>
@@ -1191,7 +1191,13 @@ function gerarAtividadesMeta(num) {
     const mat=(S.mats||[]).find(m=>m.id===pdf.matId);
     const fase=pdf.fase;
     let tipo='Teoria',titulo=mat?.nome||pdf.nome,sub='';
-    if(fase==='teoria'){sub=`Pág. ${pdf.pgAtual+1} a ${pdf.pgAtual+pgPorSessao}`;}
+    if(fase==='teoria'){
+      // Calcular páginas desta meta específica
+      const pgIni=(pdf.pgAtual||0)+1;
+      const pgFim=Math.min(pdf.pgTeoria||pdf.pgTot, pgIni+pgPorSessao-1);
+      sub=`Pág. ${pgIni} a ${pgFim}`;
+      titulo=mat?.nome||pdf.nome;
+    }
     else if(fase==='comentadas'){tipo='Revisão';sub='Questões comentadas do PDF';}
     else if(fase==='tec'){tipo='TEC';sub=`${S.qtec||20} questões`;}
     else if(fase==='reforco'){tipo='Reforço Intenso';sub='Revisar bizus + questões erradas';}
@@ -1313,7 +1319,20 @@ function abrirPopupAtiv(metaNum,idx) {
 
   // Montar seções
   const pdf=a.pdfId?(S.pdfs||[]).find(p=>p.id===a.pdfId):null;
-  const bizuBloco=a.pdfId?getBizuBloco(a.pdfId):null;
+
+  // Buscar bizu pelo pdfId OU pela matéria + número da meta
+  let bizuBloco = null;
+  if(a.pdfId){
+    bizuBloco = getBizuBloco(a.pdfId, metaNum);
+  }
+  if(!bizuBloco && a.matId){
+    // Fallback: buscar pelo matId e número da meta
+    const bizuPDF = (S.bizuPDFs||[]).find(p=>p.matId===a.matId);
+    if(bizuPDF){
+      const blocoIdx = metaNum - 1;
+      bizuBloco = bizuPDF.blocos?.[blocoIdx] || bizuPDF.blocos?.[bizuPDF.blocoAtual] || null;
+    }
+  }
   let html='';
   // Assuntos
   const assuntos=bizuBloco?.assuntos||[];
@@ -1353,11 +1372,16 @@ function toggleSecao(id){
   const open=body.classList.toggle('hidden');
   lbl.classList.toggle('open',!open);arr.textContent=open?'∨':'∧';
 }
-function getBizuBloco(pdfId){
-  const pdf=(S.bizuPDFs||[]).find(p=>p.id===pdfId||p.id===Number(pdfId));
-  if(!pdf)return null;
-  const blocoAt=pdf.blocoAtual||0;
-  return pdf.blocos?.[blocoAt]||null;
+function getBizuBloco(pdfId, metaNum){
+  // Buscar o PDF de bizus correspondente
+  const pdfs = (S.bizuPDFs||[]).filter(p => p.id===pdfId || p.id===Number(pdfId) ||
+    (S.pdfs||[]).find(sp=>sp.id===pdfId)?.matId === p.matId);
+  if(!pdfs.length) return null;
+  const pdf = pdfs[0];
+  if(!pdf.blocos?.length) return null;
+  // Bloco correto = índice (metaNum - 1), pois Meta 1 = bloco 0, Meta 2 = bloco 1, etc.
+  const blocoIdx = metaNum ? metaNum - 1 : pdf.blocoAtual || 0;
+  return pdf.blocos[blocoIdx] || pdf.blocos[pdf.blocoAtual] || pdf.blocos[0];
 }
 function formatarBizu(txt){
   if(!txt)return '';
@@ -1761,7 +1785,7 @@ async function bzGerarTodos(){
           +' JSON (retorne APENAS o JSON, sem texto antes ou depois):'
           +' {"blocos":[{"pgIni":'+pgIniParte+',"pgFim":'+(pgIniParte+pgPorSessao-1)+',"titulo":"Titulo real do conteudo","assuntos":["Assunto 1","Assunto 2"],"bizu":"# 1. TITULO\n\n## 1.1 Subtitulo\n- **Termo**: definicao\n\n## Checklist\n1. Pergunta?\nR: Resposta"}]}'
           +'\n\nTEXTO (paginas '+pgIniParte+' a '+pgFimParte+'):\n'+partesTxt[pi];
-        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:prompt}]})});
+        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:16000,messages:[{role:'user',content:prompt}]})});
         const data=await resp.json();
         if(data.error){showToast('Erro IA parte '+(pi+1)+': '+data.error.message,'err');return;}
         let txt=data.content[0].text.replace(/```json|```/g,'').trim();
@@ -1827,7 +1851,7 @@ async function bzGerarTodos(){
           +(i>0?' Continue a numeracao real das paginas do PDF.':'')
           +' Gere bizu COMPLETO hierarquico com exemplos, macetes CESPE/FCC, artigos CTN/CF88 e checklist.'
           +' JSON: {"blocos":[{"pgIni":'+pgIni+',"pgFim":'+(pgIni+pgPorSessao-1)+',"titulo":"Titulo real","assuntos":["A1","A2"],"bizu":"# 1. TITULO\\n\\n## 1.1 Sub\\n- **Termo**: def\\n\\n## Checklist\\n1. P?\\nR: R"}]}';
-        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},{type:'text',text:prompt}]}]})});
+        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:16000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},{type:'text',text:prompt}]}]})});
         const data=await resp.json();if(data.error){showToast('Erro IA parte '+(i+1)+': '+data.error.message,'err');return;}
         let txt=data.content[0].text.replace(/```json|```/g,'').trim();
         const jm=txt.match(/\{[\s\S]*\}/);if(jm)txt=jm[0];
