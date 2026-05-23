@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FiscalPro — Jornada</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1318;--sur:#181e27;--sur2:#1e2736;--bdr:#2d3a4e;
+  --gold:#f5a623;--gglow:rgba(245,166,35,.13);
+  --grn:#22c55e;--red:#ef4444;--org:#f97316;--blu:#3b82f6;--pur:#a855f7;
+  --txt:#e2e8f0;--muted:#7a8fa6;--dim:#3d5068;
+  --rad:8px;--radl:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;min-height:100vh}
+.hdr{background:var(--sur);border-bottom:1px solid var(--bdr);padding:14px 28px;display:flex;align-items:center;gap:14px}
+.logo-ico{width:28px;height:28px;background:linear-gradient(135deg,var(--gold),#c4851c);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.logo-txt{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--gold)}
+.pgt{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-left:8px}
+.back-btn{margin-left:auto;background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--rad);padding:6px 14px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;display:flex;align-items:center;gap:6px}
+.back-btn:hover{border-color:var(--gold);color:var(--gold)}
+.content{max-width:1200px;margin:0 auto;padding:24px 28px}
+.tabs{display:flex;gap:4px;background:var(--sur2);border-radius:10px;padding:4px;margin-bottom:20px;width:fit-content}
+.tab{padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s}
+.tab.on{background:var(--sur);color:var(--txt);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--radl);padding:18px 20px;margin-bottom:18px}
+.ctitle{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+
+/* CALENDÁRIO */
+.cal-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cal-nav{background:var(--sur2);border:1px solid var(--bdr);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px}
+.cal-nav:hover{border-color:var(--gold);color:var(--gold)}
+.cal-month{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.cal-stats{display:flex;gap:20px;font-size:11px;color:var(--muted);margin-left:auto}
+.cal-stats span strong{color:var(--txt)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-day-name{font-size:9px;text-align:center;color:var(--muted);text-transform:uppercase;padding:4px 0;font-weight:700}
+.cal-day{border-radius:var(--rad);padding:7px 4px;text-align:center;cursor:default;transition:all .15s}
+.cal-day.empty{visibility:hidden}
+.cal-day.today{outline:2px solid var(--gold);outline-offset:1px}
+.cal-day-num{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px}
+.cal-day-h{font-size:8px}
+/* Intensidades */
+.cal-day.none{background:var(--sur2);border:1px solid var(--bdr)}
+.cal-day.none .cal-day-num{color:var(--dim)}
+.cal-day.leve{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.2)}
+.cal-day.forte{background:rgba(34,197,94,.35);border:1px solid rgba(34,197,94,.4)}
+.cal-day.extremo{background:rgba(34,197,94,.65);border:1px solid rgba(34,197,94,.7)}
+.cal-day.extremo .cal-day-num{color:#000}
+.cal-legenda{display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--muted);flex-wrap:wrap}
+.cal-legenda span{display:flex;align-items:center;gap:5px}
+.cal-legenda .dot{width:10px;height:10px;border-radius:2px}
+
+/* HEATMAP METAS */
+.hm-grid{display:flex;flex-wrap:wrap;gap:5px}
+.hm-cell{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:help;transition:transform .15s}
+.hm-cell:hover{transform:scale(1.15)}
+/* Cores por faixa */
+.hm-90{background:#16a34a;color:#fff}
+.hm-87{background:#22c55e;color:#fff}
+.hm-84{background:#4ade80;color:#000}
+.hm-80{background:#a3e635;color:#000}
+.hm-76{background:#facc15;color:#000}
+.hm-70{background:#fb923c;color:#000}
+.hm-60{background:#ef4444;color:#fff}
+.hm-0{background:var(--sur2);color:var(--dim);border:1px solid var(--bdr)}
+.hm-legenda{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:10px}
+.hm-leg-item{display:flex;align-items:center;gap:5px;color:var(--muted)}
+.hm-dot{width:12px;height:12px;border-radius:3px}
+
+/* GRÁFICO */
+.chart-wrap{position:relative;overflow-x:auto}
+.chart-svg{min-width:600px}
+.chart-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);padding:0 20px;margin-top:4px}
+.chart-yticks{position:absolute;left:0;top:0;bottom:30px;display:flex;flex-direction:column;justify-content:space-between;font-size:9px;color:var(--muted);padding:10px 5px}
+
+/* STATS ROW */
+.stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.stat-item{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--radl);padding:12px 16px;flex:1;min-width:140px}
+.stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;font-weight:600}
+.stat-v{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+
+.estrutura-table{width:100%;border-collapse:collapse}
+.estrutura-table th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--bdr)}
+.estrutura-table td{padding:8px 10px;border-bottom:1px solid var(--bdr);font-size:12px}
+.estrutura-table tr:last-child td{border-bottom:none}
+
+@media(max-width:768px){
+  .g2{grid-template-columns:1fr}
+  .content{padding:14px 16px}
+}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="logo-ico">⚖️</div>
+  <div class="logo-txt">FiscalPro</div>
+  <div class="pgt">Jornada</div>
+  <a href="index.html" class="back-btn">← Voltar ao app</a>
+</div>
+
+<div class="content">
+  <div class="tabs">
+    <div class="tab on" onclick="setTab('ritmo')">Ritmo de estudo</div>
+    <div class="tab" onclick="setTab('estrutura')">Estrutura do planejamento</div>
+  </div>
+
+  <!-- ABA RITMO -->
+  <div id="tab-ritmo">
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="g2">
+      <!-- CALENDÁRIO -->
+      <div class="card">
+        <div class="cal-hdr">
+          <div class="cal-nav" onclick="calNav(-1)">‹</div>
+          <div class="cal-month" id="cal-month">...</div>
+          <div class="cal-nav" onclick="calNav(1)">›</div>
+          <div class="cal-stats" id="cal-stats"></div>
+        </div>
+        <div class="cal-grid" id="cal-grid">
+          <div class="cal-day-name">Dom</div><div class="cal-day-name">Seg</div><div class="cal-day-name">Ter</div>
+          <div class="cal-day-name">Qua</div><div class="cal-day-name">Qui</div><div class="cal-day-name">Sex</div><div class="cal-day-name">Sáb</div>
+        </div>
+        <div class="cal-legenda">
+          <span><div class="dot" style="background:var(--sur2);border:1px solid var(--bdr)"></div>Sem registro</span>
+          <span><div class="dot" style="background:rgba(34,197,94,.15)"></div>Estudo leve</span>
+          <span><div class="dot" style="background:rgba(34,197,94,.35)"></div>Estudo forte</span>
+          <span><div class="dot" style="background:rgba(34,197,94,.65)"></div>Estudo extremo</span>
+        </div>
+      </div>
+
+      <!-- HEATMAP METAS -->
+      <div class="card">
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div class="tab on" id="hm-tab-desemp" onclick="hmSetTab('desemp')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:var(--sur2);color:var(--muted)">Desempenho por meta</div>
+          <div class="tab" id="hm-tab-atrasos" onclick="hmSetTab('atrasos')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--dim)">Atrasos e adiamentos</div>
+        </div>
+        <div id="hm-legenda" class="hm-legenda" style="margin-bottom:12px"></div>
+        <div class="hm-grid" id="hm-grid"></div>
+      </div>
+    </div>
+
+    <!-- GRÁFICO ATIVIDADES POR META -->
+    <div class="card">
+      <div class="ctitle">Quantidade de atividades por meta</div>
+      <div class="chart-wrap">
+        <svg id="chart-svg" class="chart-svg" height="180"></svg>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:10px;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#facc15;display:inline-block"></span>Atividades por Meta</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:20px;height:2px;background:var(--muted);display:inline-block;border-top:2px dashed var(--muted)"></span>Média de atividades</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA ESTRUTURA -->
+  <div id="tab-estrutura" style="display:none">
+    <div class="card">
+      <div class="ctitle">📋 Estrutura do Planejamento</div>
+      <div id="estrutura-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBNWJ6OsxL_1hf1VB8eV3FrbYbRcS_7F50",
+  authDomain: "fiscalpro-cfa14.firebaseapp.com",
+  projectId: "fiscalpro-cfa14",
+  storageBucket: "fiscalpro-cfa14.firebasestorage.app",
+  messagingSenderId: "753569377863",
+  appId: "1:753569377863:web:f61313b20465f7d6b08b62"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let S = null;
+let calOffset = 0;
+let hmTab = 'desemp';
+
+const MS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  try {
+    const snap = await db.collection('usuarios').doc(user.uid).collection('dados').doc('estado').get();
+    S = snap.exists ? snap.data() : {};
+    if (!S.sess) S.sess = {};
+    if (!S.metas) S.metas = {};
+    render();
+  } catch(e) { console.error(e); }
+});
+
+function td(){return new Date().toISOString().split('T')[0];}
+function addD(d,n){const dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
+function fmtHoras(h){const hrs=Math.floor(h),min=Math.round((h-hrs)*60);return `${String(hrs).padStart(2,'0')}h${String(min).padStart(2,'0')}m`;}
+
+function render() {
+  renderStats();
+  renderCal();
+  renderHM();
+  renderChart();
+  renderEstrutura();
+}
+
+function renderStats() {
+  const sess = S.sess || {};
+  const t = td();
+  const mes = t.substring(0,7);
+  const diasMes = Object.keys(sess).filter(d => d.startsWith(mes) && sess[d].horas > 0).length;
+  const todos = Object.values(sess).filter(s => s.horas > 0);
+  const totH = todos.reduce((s,v) => s + (v.horas||0), 0);
+
+  // Melhor sequência
+  let ms=0,cs=0;
+  const sorted = Object.keys(sess).filter(d=>sess[d].horas>0).sort();
+  sorted.forEach((d,i) => {
+    if (i===0 || Math.round((new Date(d+'T12:00:00') - new Date(sorted[i-1]+'T12:00:00'))/86400000) > 1) cs=1;
+    else cs++;
+    ms = Math.max(ms,cs);
+  });
+
+  // Média atividades por dia
+  const metasArr = Object.values(S.metas || {});
+  const totalAtivs = metasArr.reduce((s,m) => s + (m.atividades||[]).length, 0);
+  const mediaAtivs = metasArr.length ? (totalAtivs/metasArr.length).toFixed(2) : '0';
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-item"><div class="stat-lbl">📅 Dias de estudo</div><div class="stat-v" style="color:var(--grn)">${diasMes} dias no mês</div></div>
+    <div class="stat-item"><div class="stat-lbl">🔥 Melhor sequência</div><div class="stat-v" style="color:var(--gold)">${ms} dias seguidos</div></div>
+    <div class="stat-item"><div class="stat-lbl">📋 Média atv. por dia</div><div class="stat-v" style="color:var(--blu)">${mediaAtivs} atividades</div></div>
+    <div class="stat-item"><div class="stat-lbl">⏱ Total de horas</div><div class="stat-v" style="color:var(--pur)">${fmtHoras(totH)}</div></div>`;
+}
+
+function renderCal() {
+  const today = td();
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + calOffset;
+  const base = new Date(y, m, 1);
+  document.getElementById('cal-month').textContent = `${MS[base.getMonth()]} ${base.getFullYear()}`;
+
+  const diasNoMes = new Date(base.getFullYear(), base.getMonth()+1, 0).getDate();
+  const primeiroDia = base.getDay();
+  const sess = S.sess || {};
+  const hMeta = S.horasDia || 2;
+
+  let diasEst=0, melhorSeq=0, curSeq=0;
+  let grid = '<div class="cal-day-name">Dom</div><div class="cal-day-name">Seg</div><div class="cal-day-name">Ter</div><div class="cal-day-name">Qua</div><div class="cal-day-name">Qui</div><div class="cal-day-name">Sex</div><div class="cal-day-name">Sáb</div>';
+
+  for (let i=0; i<primeiroDia; i++) grid += '<div class="cal-day empty"></div>';
+  for (let d=1; d<=diasNoMes; d++) {
+    const dateStr = `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const h = sess[dateStr]?.horas || 0;
+    if (h>0){diasEst++;curSeq++;melhorSeq=Math.max(melhorSeq,curSeq);}else curSeq=0;
+    const cls = h===0?'none':h<hMeta*0.5?'leve':h<hMeta?'forte':'extremo';
+    const isToday = dateStr===today;
+    grid += `<div class="cal-day ${cls} ${isToday?'today':''}"><div class="cal-day-num">${d}</div><div class="cal-day-h" style="color:${h>0?'inherit':'var(--dim)'}">${h>0?h+'h':''}</div></div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = grid;
+  document.getElementById('cal-stats').innerHTML = `<span><strong>${diasEst}</strong> dias estudados</span><span><strong>${melhorSeq}</strong> dias seguidos</span>`;
+}
+
+function calNav(n) { calOffset += n; renderCal(); }
+
+function hmSetTab(t) {
+  hmTab = t;
+  document.getElementById('hm-tab-desemp').style.background = t==='desemp'?'var(--sur2)':'transparent';
+  document.getElementById('hm-tab-desemp').style.color = t==='desemp'?'var(--muted)':'var(--dim)';
+  document.getElementById('hm-tab-atrasos').style.background = t==='atrasos'?'var(--sur2)':'transparent';
+  document.getElementById('hm-tab-atrasos').style.color = t==='atrasos'?'var(--muted)':'var(--dim)';
+  renderHM();
+}
+
+function renderHM() {
+  const metas = S.metas || {};
+  const metaAtual = S.metaAtual || 1;
+  const grid = document.getElementById('hm-grid');
+  const leg = document.getElementById('hm-legenda');
+
+  if (hmTab === 'desemp') {
+    leg.innerHTML = `
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#16a34a"></div>>90%</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#22c55e"></div>>87%</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#4ade80"></div>>84%</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#a3e635"></div>>80%</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#facc15"></div>>76%</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#fb923c"></div>>60%</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:#ef4444"></div>Até 60%</div>`;
+
+    let html = '';
+    for (let i=1; i<=metaAtual; i++) {
+      const meta = metas[i];
+      const qs = (S.qs||[]).filter(q=>q.meta===i);
+      const totQ=qs.length, totAc=qs.filter(q=>q.res==='acerto').length;
+      const pct = totQ>0 ? Math.round(totAc/totQ*100) : null;
+      const cls = pct===null?'hm-0':pct>=90?'hm-90':pct>=87?'hm-87':pct>=84?'hm-84':pct>=80?'hm-80':pct>=76?'hm-76':pct>=60?'hm-70':'hm-60';
+      html += `<div class="hm-cell ${cls}" title="Meta ${i}: ${pct!==null?pct+'%':'sem questões'}">${i}</div>`;
+    }
+    grid.innerHTML = html || '<div style="color:var(--dim);font-size:12px">Nenhuma meta concluída ainda</div>';
+  } else {
+    leg.innerHTML = `
+      <div class="hm-leg-item"><div class="hm-dot" style="background:var(--grn)"></div>Em dia</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:var(--org)"></div>Adiamento</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:var(--red)"></div>Com atraso</div>`;
+    let html = '';
+    for (let i=1; i<=metaAtual; i++) {
+      const meta = metas[i];
+      const conc = meta?(meta.atividades||[]).filter(a=>a.status==='concluida').length:0;
+      const tot = meta?(meta.atividades||[]).length:0;
+      const pct = tot>0?Math.round(conc/tot*100):0;
+      const bg = pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
+      const lbl = pct>=100?'✓':pct>=70?'~':'!';
+      html += `<div class="hm-cell" style="background:${bg};color:#fff" title="Meta ${i}: ${pct}% concluída">${i}</div>`;
+    }
+    grid.innerHTML = html || '<div style="color:var(--dim);font-size:12px">Nenhuma meta ainda</div>';
+  }
+}
+
+function renderChart() {
+  const metas = S.metas || {};
+  const metaAtual = S.metaAtual || 1;
+  const svg = document.getElementById('chart-svg');
+  const W = Math.max(600, metaAtual * 50);
+  svg.setAttribute('width', W);
+  const H = 180, padL=40, padB=30, padT=10, padR=20;
+  const chartW = W - padL - padR;
+  const chartH = H - padB - padT;
+
+  const dados = [];
+  for (let i=1; i<=metaAtual; i++) {
+    const meta = metas[i];
+    dados.push({ num:i, qt:(meta?.atividades||[]).length });
+  }
+  if (!dados.length) { svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#3d5068" font-size="12">Nenhuma meta ainda</text>'; return; }
+
+  const maxQt = Math.max(...dados.map(d=>d.qt), 1);
+  const media = dados.reduce((s,d)=>s+d.qt,0)/dados.length;
+  const bW = Math.max(8, chartW/dados.length*0.6);
+  const mediaY = padT + chartH - (media/maxQt)*chartH;
+
+  let svgHtml = '';
+  // Grid lines
+  for (let i=0;i<=4;i++){
+    const y=padT+chartH*(i/4);
+    const v=Math.round(maxQt*(1-i/4));
+    svgHtml+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#2d3a4e" stroke-width="1"/>`;
+    svgHtml+=`<text x="${padL-5}" y="${y+4}" text-anchor="end" fill="#3d5068" font-size="9">${v}</text>`;
+  }
+  // Linha de média
+  svgHtml+=`<line x1="${padL}" y1="${mediaY}" x2="${W-padR}" y2="${mediaY}" stroke="#7a8fa6" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+  svgHtml+=`<text x="${W-padR+3}" y="${mediaY+4}" fill="#7a8fa6" font-size="9">${media.toFixed(1)}</text>`;
+
+  // Barras
+  dados.forEach((d,i) => {
+    const x = padL + (i/dados.length)*chartW + chartW/(dados.length*2) - bW/2;
+    const h = (d.qt/maxQt)*chartH;
+    const y = padT + chartH - h;
+    svgHtml+=`<rect x="${x}" y="${y}" width="${bW}" height="${h}" fill="#facc15" rx="3" opacity=".85"/>`;
+    svgHtml+=`<text x="${x+bW/2}" y="${y-4}" text-anchor="middle" fill="#e2e8f0" font-size="9" font-weight="700">${d.qt}</text>`;
+    svgHtml+=`<text x="${x+bW/2}" y="${H-padB+14}" text-anchor="middle" fill="#7a8fa6" font-size="9">${d.num}</text>`;
+    // Indicador de variação
+    if (i>0) {
+      const prev=dados[i-1].qt, curr=d.qt;
+      if(curr!==prev){
+        const txt=(curr>prev?'» +':'↺ ')+(curr-prev>0?curr-prev:curr-prev);
+        const cor=curr>prev?'#fb923c':'#f87171';
+        svgHtml+=`<text x="${x+bW/2}" y="${y-14}" text-anchor="middle" fill="${cor}" font-size="8">${txt}</text>`;
+      }
+    }
+  });
+  svg.innerHTML = svgHtml;
+}
+
+function renderEstrutura() {
+  const mats = S.mats || [];
+  const pdfs = S.pdfs || [];
+  const el = document.getElementById('estrutura-content');
+  if (!mats.length && !pdfs.length) { el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">Nenhuma matéria ou PDF cadastrado ainda.</div>'; return; }
+  el.innerHTML = `<table class="estrutura-table">
+    <thead><tr><th>#</th><th>Matéria</th><th>Status</th><th>PDFs</th><th>Bizus</th><th>Peso</th></tr></thead>
+    <tbody>${mats.map((m,i)=>{
+      const pdfsM=pdfs.filter(p=>p.matId===m.id).length;
+      const bizusM=(S.bizuPDFs||[]).filter(b=>b.matId===m.id).reduce((s,b)=>s+(b.blocos||[]).length,0);
+      const sc=m.status==='ativa'?'color:var(--grn)':m.status==='revisao'?'color:var(--pur)':'color:var(--muted)';
+      const sl=m.status==='ativa'?'● Ativa':m.status==='revisao'?'🔄 Revisão':'⏸ Pausada';
+      return `<tr><td>${i+1}</td><td style="font-weight:500"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.cor};margin-right:6px"></span>${m.nome}</td><td style="${sc};font-size:11px">${sl}</td><td>${pdfsM}</td><td>${bizusM}</td><td>${m.peso||3}/5</td></tr>`;
+    }).join('')}</tbody>
+  </table>
+  <div style="margin-top:18px">
+    <div class="ctitle">📄 PDFs Cadastrados</div>
+    ${pdfs.length?`<table class="estrutura-table">
+      <thead><tr><th>Nome</th><th>Matéria</th><th>Páginas</th><th>Fase</th><th>Progresso</th></tr></thead>
+      <tbody>${pdfs.map(p=>{
+        const m=mats.find(x=>x.id===p.matId);
+        const pg=p.fase==='concluido'?100:Math.min(100,Math.round(((p.pgAtual||0)/(p.pgTot||1))*100));
+        return `<tr><td style="font-weight:500">${p.nome}</td><td style="color:${m?.cor||'var(--muted)'};font-size:11px">${m?.nome||'—'}</td><td>${p.pgTot||'?'}</td><td style="font-size:11px">${p.fase||'—'}</td><td><div style="background:var(--sur2);border-radius:3px;height:5px;width:80px;overflow:hidden"><div style="height:100%;border-radius:3px;background:${m?.cor||'var(--gold)'};width:${pg}%"></div></div><span style="font-size:9px;color:var(--muted);margin-left:5px">${pg}%</span></td></tr>`;
+      }).join('')}</tbody>
+    </table>`:'<div style="color:var(--muted);font-size:12px">Nenhum PDF cadastrado.</div>'}
+  </div>`;
+}
+
+function setTab(t) {
+  document.getElementById('tab-ritmo').style.display = t==='ritmo'?'block':'none';
+  document.getElementById('tab-estrutura').style.display = t==='estrutura'?'block':'none';
+  document.querySelectorAll('.tabs .tab').forEach((el,i)=>{
+    el.classList.toggle('on', (i===0&&t==='ritmo')||(i===1&&t==='estrutura'));
+  });
+}
+</script>
+</body>
+</html>
