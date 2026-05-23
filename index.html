@@ -1724,15 +1724,20 @@ async function bzGerarTodos(){
   try{
     if(bzModoAtual==='texto'){
       const texto=document.getElementById('bz-texto-pdf').value.trim();
-      // Dividir texto em partes de ~30k chars para não estourar limites
-      const PARTE_MAX = 30000;
+      const totalPags = pgFim - pgIni + 1;
+      // Calcular quantos blocos esperamos: 1 bloco por sessão de pgPorSessao páginas
+      const nBlocosEsperados = Math.max(1, Math.round(totalPags / pgPorSessao));
+      // Dividir o texto proporcionalmente: 1 parte por bloco esperado
+      // Máx 60k chars por parte para não estourar tokens
+      const charsPorPag = Math.round(texto.length / totalPags);
+      const charsPorBloco = charsPorPag * pgPorSessao;
+      const PARTE_MAX = Math.min(60000, Math.max(20000, charsPorBloco));
       const partesTxt = [];
       for(let pos=0; pos<texto.length; pos+=PARTE_MAX){
-        // Tentar cortar no fim de parágrafo mais próximo
         let fim = Math.min(pos+PARTE_MAX, texto.length);
         if(fim < texto.length){
           const corte = texto.lastIndexOf('\n\n', fim);
-          if(corte > pos + 10000) fim = corte;
+          if(corte > pos + 5000) fim = corte;
         }
         partesTxt.push(texto.substring(pos, fim));
         if(fim === texto.length) break;
@@ -1742,17 +1747,20 @@ async function bzGerarTodos(){
         const pct = Math.round((pi/totPartes)*75)+10;
         document.getElementById('bz-gen-bar').style.width=pct+'%';
         document.getElementById('bz-gen-txt').textContent = totPartes>1
-          ? 'Processando parte '+(pi+1)+' de '+totPartes+' do texto...'
+          ? 'Processando parte '+(pi+1)+' de '+totPartes+' (cada parte = ~'+pgPorSessao+' páginas de estudo)...'
           : 'A IA está analisando o texto e gerando bizus...';
-        const pgParte = Math.round((pgFim-pgIni)/totPartes);
+        const pgParte = Math.round(totalPags/totPartes);
         const pgIniParte = pgIni + pi*pgParte;
         const pgFimParte = pi===totPartes-1 ? pgFim : pgIniParte+pgParte-1;
-        const prompt = 'Materia: '+mat.nome+'. Paginas '+pgIniParte+' a '+pgFimParte+'. Sessao ~'+pgPorSessao+' pag.'
-          +(totPartes>1?' Parte '+(pi+1)+' de '+totPartes+' do texto total.':'')
-          +' Divida em blocos por assunto respeitando fim de topico.'
-          +' Para cada bloco gere bizu hierarquico (1, 1.1, 1.2...) com exemplos, macetes CESPE/FCC, artigos CTN/CF88 e checklist ao final.'
-          +' JSON: {"blocos":[{"pgIni":'+pgIniParte+',"pgFim":'+pgFimParte+',"titulo":"T","assuntos":["A"],"bizu":"# 1. TITULO\n\nConteudo hierarquico **negrito** exemplos macetes.\n\n## Checklist\n1. Pergunta?\nR: Resposta"}]}'
-          +'\n\nTEXTO:\n'+partesTxt[pi];
+        const prompt = 'Materia: '+mat.nome+'.'
+          +' REGRA PRINCIPAL: cada bloco deve ter EXATAMENTE ~'+pgPorSessao+' paginas (de '+pgIniParte+' a '+(pgIniParte+pgPorSessao-1)+' aprox).'
+          +' NUNCA crie blocos com menos de '+(Math.round(pgPorSessao*0.7))+' paginas.'
+          +' Esta parte cobre as paginas '+pgIniParte+' a '+pgFimParte+'.'
+          +(totPartes>1?' (Parte '+(pi+1)+' de '+totPartes+' do PDF total)':'')
+          +' Para cada bloco gere bizu COMPLETO hierarquico com exemplos, macetes CESPE/FCC, artigos CTN/CF88 e checklist ao final.'
+          +' JSON (retorne APENAS o JSON, sem texto antes ou depois):'
+          +' {"blocos":[{"pgIni":'+pgIniParte+',"pgFim":'+(pgIniParte+pgPorSessao-1)+',"titulo":"Titulo real do conteudo","assuntos":["Assunto 1","Assunto 2"],"bizu":"# 1. TITULO\n\n## 1.1 Subtitulo\n- **Termo**: definicao\n\n## Checklist\n1. Pergunta?\nR: Resposta"}]}'
+          +'\n\nTEXTO (paginas '+pgIniParte+' a '+pgFimParte+'):\n'+partesTxt[pi];
         const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:prompt}]})});
         const data=await resp.json();
         if(data.error){showToast('Erro IA parte '+(pi+1)+': '+data.error.message,'err');return;}
@@ -1777,7 +1785,12 @@ async function bzGerarTodos(){
         const tamanhoMB=(parte.bytes.length*0.75)/(1024*1024);
         if(tamanhoMB>15){showToast('Parte '+(i+1)+' muito grande. Use PDFs menores (~50 pág).','err');return;}
         const parteDesc=bzPdfPartes.length>1?'PARTE '+(i+1)+' de '+bzPdfPartes.length:'PDF';
-        const prompt='Materia: '+mat.nome+'. '+parteDesc+'. Pags: '+pgIni+'-'+pgFim+'. Sessao ~'+pgPorSessao+' pag. '+(i>0?'Continue numeracao original.':'')+' Divida em blocos por assunto. Bizu COMPLETO hierarquico com exemplos e checklist ao final. JSON: {"blocos":[{"pgIni":1,"pgFim":20,"titulo":"T","assuntos":["A"],"bizu":"# 1. TITULO\\n\\nConteudo com **negrito**, exemplos, macetes CESPE FCC, artigos CTN CF88.\\n\\n## Checklist\\n1. Pergunta?\\nR: Resposta"}]}';
+        const prompt='Materia: '+mat.nome+'. '+parteDesc+'.'
+          +' REGRA PRINCIPAL: cada bloco deve ter EXATAMENTE ~'+pgPorSessao+' paginas. NUNCA crie blocos menores que '+(Math.round(pgPorSessao*0.7))+' paginas.'
+          +' Paginas totais: '+pgIni+' a '+pgFim+'.'
+          +(i>0?' Continue a numeracao real das paginas do PDF.':'')
+          +' Gere bizu COMPLETO hierarquico com exemplos, macetes CESPE/FCC, artigos CTN/CF88 e checklist.'
+          +' JSON: {"blocos":[{"pgIni":'+pgIni+',"pgFim":'+(pgIni+pgPorSessao-1)+',"titulo":"Titulo real","assuntos":["A1","A2"],"bizu":"# 1. TITULO\\n\\n## 1.1 Sub\\n- **Termo**: def\\n\\n## Checklist\\n1. P?\\nR: R"}]}';
         const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},{type:'text',text:prompt}]}]})});
         const data=await resp.json();if(data.error){showToast('Erro IA parte '+(i+1)+': '+data.error.message,'err');return;}
         let txt=data.content[0].text.replace(/```json|```/g,'').trim();
@@ -1813,7 +1826,7 @@ function rBizu(){
       if(!lib)return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--rad);background:var(--sur2);border:1px solid var(--bdr);opacity:.45;margin-bottom:4px"><div style="font-size:16px">🔒</div><div><div style="font-size:11px;font-weight:600;color:var(--dim)">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div><div style="font-size:9px;color:var(--dim)">Conclua a meta anterior</div></div></div>`;
       return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--rad);background:${concl?'var(--grndim)':'var(--gglow)'};border:1px solid ${concl?'rgba(34,197,94,.3)':'rgba(245,166,35,.3)'};margin-bottom:4px;cursor:pointer" onclick="bzVerBizu('${pdf.id}',${i})"><div style="font-size:16px">${concl?'✅':'📖'}</div><div style="flex:1"><div style="font-size:11px;font-weight:700;color:${concl?'var(--grn)':'var(--gold)'}">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div><div style="font-size:10px;color:var(--muted)">${b.titulo}</div><div style="font-size:9px;color:var(--dim);margin-top:1px">${(b.assuntos||[]).slice(0,3).join(' • ')}</div></div><div style="font-size:10px;color:${concl?'var(--grn)':'var(--gold)'};font-weight:700">Ver bizu →</div></div>`;
     }).join('');
-    return `<div class="card mb"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px"><div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px">${pdf.nome}</div><div style="display:flex;gap:7px;flex-wrap:wrap;font-size:10px;color:var(--muted)">${mat?`<span style="color:${mat.cor}">● ${mat.nome}</span>`:''}<span>📄 pág. ${pdf.pgIni}–${pdf.pgFim}</span><span>📋 ${total} metas</span><span>${conc}/${total} concluídas</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div><span style="font-size:10px;color:var(--grn);font-weight:700">${pct}%</span></div></div><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="bzAdicionarBloco('${pdf.id}')" title="Adicionar bloco">+ Bloco</button><button class="btn btn-r btn-xs" onclick="bzDelPDF('${pdf.id}')">🗑</button></div></div>${blocosHtml}</div>`;
+    return `<div class="card mb"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px"><div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px">${pdf.nome}</div><div style="display:flex;gap:7px;flex-wrap:wrap;font-size:10px;color:var(--muted)">${mat?`<span style="color:${mat.cor}">● ${mat.nome}</span>`:''}<span>📄 pág. ${pdf.pgIni}–${pdf.pgFim}</span><span>📋 ${total} metas</span><span>${conc}/${total} concluídas</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div><span style="font-size:10px;color:var(--grn);font-weight:700">${pct}%</span></div></div><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-b btn-xs" onclick="bzRefazer('${pdf.id}')" title="Apagar bizus e regerar">↺ Refazer</button><button class="btn btn-p btn-xs" onclick="bzAdicionarBloco('${pdf.id}')" title="Adicionar bloco manualmente">+ Bloco</button><button class="btn btn-r btn-xs" onclick="bzDelPDF('${pdf.id}')">🗑</button></div></div>${blocosHtml}</div>`;
   }).join('');
 }
 function bzVerBizu(pdfId,blocoIdx){
@@ -1839,6 +1852,26 @@ function bzConcluirBloco(){
   if(blocoIdx+1<pdf.blocos.length){pdf.blocoAtual=blocoIdx+1;showToast(`🎉 Meta ${blocoIdx+1} concluída! Próximo bizu desbloqueado.`,'ok');}
   else showToast('🏆 Todos os bizus deste PDF concluídos!','ok');
   save();fecharMod('mod-bizu-ver');rBizu();
+}
+function bzRefazer(pdfId){
+  const pdf=(S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));
+  if(!pdf)return;
+  if(!confirm(`Apagar os ${pdf.blocos.length} bizus de "${pdf.nome}" e gerar novamente?`))return;
+  // Salvar dados para pré-preencher o modal
+  const nome=pdf.nome,matId=pdf.matId,pgIni=pdf.pgIni,pgFim=pdf.pgFim;
+  // Remover o PDF de bizus atual
+  S.bizuPDFs=(S.bizuPDFs||[]).filter(p=>String(p.id)!==String(pdfId));
+  save();
+  // Abrir modal pré-preenchido
+  abrirGeradorBizu();
+  setTimeout(()=>{
+    document.getElementById('bz-nome-pdf').value=nome;
+    const sel=document.getElementById('bz-mat-sel');
+    for(let o of sel.options) if(parseInt(o.value)===matId) o.selected=true;
+    document.getElementById('bz-pg-ini').value=pgIni;
+    document.getElementById('bz-pg-fim').value=pgFim;
+  },100);
+  showToast('Bizus removidos. Selecione o modo e gere novamente.','ok');
 }
 function bzAdicionarBloco(pdfId){
   // Abre modal em modo pronto com o PDF pré-selecionado
