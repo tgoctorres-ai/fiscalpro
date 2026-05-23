@@ -840,13 +840,24 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('login-loading').classList.remove('hidden');
     document.getElementById('loading-txt').textContent = 'Carregando seus dados...';
 
+    // Timeout de segurança — se travar por mais de 8s, abre o app mesmo assim
+    const timeoutId = setTimeout(() => {
+      console.warn('Timeout ao carregar Firestore — abrindo app com dados locais');
+      if (!S || !S.mats) { S = getDefaultState(); initMats(); }
+      const localKey = localStorage.getItem('fp_apikey');
+      if (localKey) S.apiKey = localKey;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      P('dash');
+    }, 8000);
+
     try {
       const snap = await db.collection('usuarios').doc(user.uid).collection('dados').doc('estado').get();
+      clearTimeout(timeoutId);
       if (snap.exists) {
         const data = snap.data();
         delete data._ts;
         S = { ...getDefaultState(), ...data };
-        // API key: localStorage tem prioridade (mais confiável)
         const localKey = localStorage.getItem('fp_apikey');
         if (localKey) S.apiKey = localKey;
         if (!S.mats || S.mats.length === 0) initMats();
@@ -857,8 +868,11 @@ auth.onAuthStateChanged(async (user) => {
         initMats();
       }
     } catch (e) {
+      clearTimeout(timeoutId);
       console.error('Erro ao carregar:', e);
       S = getDefaultState();
+      const localKey = localStorage.getItem('fp_apikey');
+      if (localKey) S.apiKey = localKey;
       initMats();
     }
 
@@ -898,7 +912,7 @@ const FASE_CLASS={'teoria':'fase-teoria','comentadas':'fase-comentadas','tec':'f
 const MOTIV=["Cada hora estudada é um investimento no seu futuro!","Aos 41 anos você traz maturidade que faz diferença na prova.","Consistência bate intensidade. Um pouco todo dia chega longe.","Qualidade > quantidade. Estude com foco.","Cada questão resolvida é um passo a mais.","Aprovação é uma maratona. Respeite seu ritmo.","Você já tomou a decisão mais difícil: começar.","Dias difíceis fazem parte. O que importa é não parar.","Seu esforço hoje é sua vantagem amanhã.","Foco no processo. O resultado vem como consequência."];
 
 function getDefaultState(){
-  return {apiKey:'',horasDia:2,horasFds:2,extraMin:30,matsPerDay:2,pph:15,qtec:20,mats:[],pdfs:[],sess:{},qs:[],bizus:[],chatH:[],editMat:null,editPDF:null,semOff:0};
+  return {apiKey:'',horasDia:2,horasFds:2,extraMin:30,matsPerDay:2,pph:15,qtec:20,mats:[],pdfs:[],bizuPDFs:[],sess:{},qs:[],bizus:[],chatH:[],editMat:null,editPDF:null,semOff:0};
 }
 
 function save(){scheduleSave();}
