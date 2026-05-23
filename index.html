@@ -443,28 +443,99 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 <!-- BIZUS -->
 <div id="pg-bizu" class="hidden">
   <div class="hdr">
-    <div class="hdr-l"><div class="pgt">Bizus</div><div class="pgs">Resumos permanentes — consulte a qualquer momento</div></div>
+    <div class="hdr-l"><div class="pgt">Bizus</div><div class="pgs">IA lê seu PDF e divide em metas de estudo</div></div>
     <div class="hdr-r">
-      <select class="fs" id="bz-filtro-mat" onchange="rBizu()" style="font-size:11px;padding:4px 8px;width:auto"><option value="">Todas as matérias</option></select>
       <select class="fs" id="bz-filtro-pdf" onchange="rBizu()" style="font-size:11px;padding:4px 8px;width:auto"><option value="">Todos os PDFs</option></select>
-      <button class="btn btn-g btn-sm" id="btn-bizu" onclick="gerarBizu()">⚡ Gerar com IA</button>
+      <button class="btn btn-g btn-sm" onclick="abrirGeradorBizu()">+ Novo PDF</button>
     </div>
   </div>
   <div class="content">
-    <div class="card mb">
-      <div class="ctitle">⚡ Novo Bizu</div>
-      <div class="frow">
-        <div class="fg"><label class="flbl">Matéria</label><select class="fs" id="bz-mat"></select></div>
-        <div class="fg"><label class="flbl">PDF</label><select class="fs" id="bz-pdf"><option value="">Selecione...</option></select></div>
-        <div class="fg"><label class="flbl">Tópico</label><input type="text" class="fi" id="bz-top" placeholder="Ex: Fato Gerador ICMS"></div>
-      </div>
-      <div class="fg"><label class="flbl">Trecho do PDF (cole aqui para gerar baseado no seu material)</label><textarea class="fta" id="bz-ref" placeholder="Cole um trecho da sua apostila..."></textarea></div>
-      <div class="fg"><label class="flbl">Páginas de referência</label><input type="text" class="fi" id="bz-pags" placeholder="Ex: 15-30"></div>
-      <button class="btn btn-g" onclick="gerarBizu()">⚡ Gerar Bizu com IA</button>
-    </div>
     <div id="bz-lst"></div>
   </div>
 </div>
+
+<!-- MODAL: GERADOR DE BIZU COM UPLOAD -->
+<div class="ov hidden" id="mod-gerador-bizu">
+  <div class="modal modal-lg">
+    <div class="mtitle">⚡ Gerar Bizus de um PDF</div>
+
+    <!-- STEP 1 -->
+    <div id="bz-step1">
+      <div class="ibox org mb">
+        A IA vai ler o PDF completo, dividir em blocos de estudo respeitando os assuntos, gerar um bizu por bloco e salvar tudo no Firestore. Você estuda bloco a bloco e o próximo bizu desbloqueia automaticamente.
+      </div>
+      <div class="fg">
+        <label class="flbl">① Selecione o PDF físico</label>
+        <div id="bz-upload-area" onclick="document.getElementById('bz-file-input').click()"
+          style="border:2px dashed var(--bdr2);border-radius:var(--rad);padding:22px;text-align:center;cursor:pointer;background:var(--sur2);transition:all .2s">
+          <div style="font-size:28px;margin-bottom:6px">📄</div>
+          <div style="font-size:12px;color:var(--muted)" id="bz-upload-txt">Clique para selecionar o PDF</div>
+          <div style="font-size:10px;color:var(--dim);margin-top:3px">O arquivo fica apenas no seu navegador</div>
+        </div>
+        <input type="file" id="bz-file-input" accept=".pdf" style="display:none" onchange="bzCarregarPDF(event)">
+      </div>
+
+      <div id="bz-form" style="display:none">
+        <div class="frow">
+          <div class="fg">
+            <label class="flbl">② Nome deste PDF</label>
+            <input type="text" class="fi" id="bz-nome-pdf" placeholder="Ex: Dir. Tributário — PDF 01 (Estratégia)">
+          </div>
+          <div class="fg">
+            <label class="flbl">Matéria</label>
+            <select class="fs" id="bz-mat-sel"></select>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg">
+            <label class="flbl">③ Primeira pág. de teoria</label>
+            <input type="number" class="fi" id="bz-pg-ini" min="1" placeholder="Ex: 5">
+          </div>
+          <div class="fg">
+            <label class="flbl">Última pág. de teoria</label>
+            <input type="number" class="fi" id="bz-pg-fim" min="1" placeholder="Ex: 94">
+          </div>
+        </div>
+        <div class="ibox gold mb" id="bz-calc-info" style="display:none"></div>
+        <button class="btn btn-g" onclick="bzGerarTodos()" id="btn-bz-gerar" style="width:100%">
+          ⚡ Gerar todos os Bizus com IA
+        </button>
+        <div id="bz-gen-progress" style="display:none;margin-top:12px">
+          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)">
+            <div class="spin" style="width:18px;height:18px;border-width:2px"></div>
+            <span id="bz-gen-txt">A IA está lendo o PDF e gerando os bizus...</span>
+          </div>
+          <div class="pbar" style="margin-top:8px"><div class="pfill g" id="bz-gen-bar" style="width:0%;transition:width 1s"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mfoot" style="margin-top:14px">
+      <button class="btn btn-o" onclick="fecharMod('mod-gerador-bizu')" style="flex:1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: VER BIZU COMPLETO -->
+<div class="ov hidden" id="mod-bizu-ver">
+  <div class="modal modal-lg">
+    <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
+      <div style="flex:1">
+        <div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">⚡ Bizu</div>
+        <div class="mtitle" id="bv-titulo" style="margin-bottom:0"></div>
+      </div>
+      <button class="btn btn-gh btn-sm" onclick="fecharMod('mod-bizu-ver')">✕</button>
+    </div>
+    <div id="bv-meta" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <div id="bv-conteudo" style="font-size:13px;line-height:1.85;color:var(--txt)"></div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-n btn-sm" id="bv-btn-concluir" onclick="bzConcluirBloco()">✅ Marcar como estudado → liberar próximo</button>
+      <button class="btn btn-org btn-sm" onclick="bzCopiar()">📋 Copiar</button>
+      <button class="btn btn-o btn-sm" onclick="fecharMod('mod-bizu-ver')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- QUESTÕES -->
 <div id="pg-qq" class="hidden">
@@ -1110,7 +1181,7 @@ function avPag(id){
   if(nova>=(pdf.pgTeoria||pdf.pgTot))avancarFase(pdf);
   save();rPDFs();showToast(`Avançado para pág. ${nova}`);
 }
-function irBizuPDF(id){const pdf=(S.pdfs||[]).find(p=>p.id===id);P('bizu');setTimeout(()=>{const sp=document.getElementById('bz-pdf');for(let o of sp.options)if(o.value==id)o.selected=true;if(pdf){const sm=document.getElementById('bz-mat');for(let o of sm.options)if(o.value==pdf.matId)o.selected=true;}},150);}
+function irBizuPDF(id){P('bizu');setTimeout(()=>{const fp=document.getElementById('bz-filtro-pdf');if(fp){for(let o of fp.options)if(String(o.value)===String(id))o.selected=true;rBizu();}},150);}
 
 let tecPdfId=null;
 function abrirTEC(id){
@@ -1180,51 +1251,315 @@ function marcarRev(id){
   save();rRev();updBadges();showToast('Revisão marcada!');
 }
 
-// ======= BIZUS =======
-function rBizu(){
-  if(!S.mats)return;
-  const fm=document.getElementById('bz-filtro-mat');const fp=document.getElementById('bz-filtro-pdf');
-  const bm=document.getElementById('bz-mat');const bp=document.getElementById('bz-pdf');
-  [fm,bm].forEach(el=>{el.innerHTML=(el===fm?'<option value="">Todas as matérias</option>':'')+(S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');});
-  [fp,bp].forEach(el=>{el.innerHTML=(el===fp?'<option value="">Todos os PDFs</option>':'<option value="">Selecione...</option>')+(S.pdfs||[]).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');});
-  const fM=fm.value;const fP=fp.value;
-  let bizus=[...(S.bizus||[])].reverse();
-  if(fM)bizus=bizus.filter(b=>String(b.matId)===fM);
-  if(fP)bizus=bizus.filter(b=>String(b.pdfId)===fP);
-  const el=document.getElementById('bz-lst');
-  if(!bizus.length){el.innerHTML='<div class="empty"><div class="et">Nenhum bizu ainda.<br>Gere com IA ou adicione manualmente!</div></div>';return;}
-  el.innerHTML=bizus.map(b=>{
-    const i=S.bizus.findIndex(x=>x===([...S.bizus].reverse().find(r=>r===b)));
-    const realI=(S.bizus||[]).length-1-([...(S.bizus||[])].reverse().indexOf(b));
-    const mat=(S.mats||[]).find(m=>m.id===b.matId);const pdf=(S.pdfs||[]).find(p=>p.id===b.pdfId);
-    return `<div class="bcard"><div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="btag">⚡ Bizu</span><div class="btitle" style="flex:1">${b.titulo}</div><button class="btn btn-r btn-xs" onclick="delBizu(${realI})">🗑</button></div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">${mat?`<span class="badge bp" style="color:${mat.cor}">📚 ${mat.nome}</span>`:''} ${pdf?`<span class="badge bp">📄 ${pdf.nome}</span>`:''} ${b.pags?`<span class="badge bp">📖 pág. ${b.pags}</span>`:''} <span class="badge bp">${b.data||''}</span></div><div class="bcont">${(b.cont||'').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div></div>`;
+// ======= BIZU — SISTEMA DE METAS COM PDF =======
+let bzPdfBytes = null;
+let bzPdfNome = '';
+let bzBlocoAtualId = null; // pdfId sendo visto no modal
+
+function abrirGeradorBizu() {
+  bzPdfBytes = null; bzPdfNome = '';
+  document.getElementById('bz-upload-txt').textContent = 'Clique para selecionar o PDF';
+  document.getElementById('bz-upload-area').style.borderColor = 'var(--bdr2)';
+  document.getElementById('bz-upload-area').style.background = 'var(--sur2)';
+  document.getElementById('bz-form').style.display = 'none';
+  document.getElementById('bz-file-input').value = '';
+  document.getElementById('bz-pg-ini').value = '';
+  document.getElementById('bz-pg-fim').value = '';
+  document.getElementById('bz-calc-info').style.display = 'none';
+  document.getElementById('bz-gen-progress').style.display = 'none';
+  document.getElementById('btn-bz-gerar').style.display = 'block';
+  // Popular matérias
+  const sel = document.getElementById('bz-mat-sel');
+  sel.innerHTML = (S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');
+  // Popular nome com sugestão
+  document.getElementById('bz-nome-pdf').value = '';
+  document.getElementById('mod-gerador-bizu').classList.remove('hidden');
+}
+
+function bzCarregarPDF(event) {
+  const file = event.target.files[0];
+  if (!file || file.type !== 'application/pdf') { showToast('Selecione um PDF válido!','err'); return; }
+  const txt = document.getElementById('bz-upload-txt');
+  txt.textContent = '⏳ Carregando...';
+  const reader = new FileReader();
+  reader.onload = e => {
+    bzPdfBytes = e.target.result.split(',')[1];
+    bzPdfNome = file.name;
+    txt.textContent = `✅ ${file.name} (${(file.size/1024/1024).toFixed(1)}MB)`;
+    document.getElementById('bz-upload-area').style.borderColor = 'var(--grn)';
+    document.getElementById('bz-upload-area').style.background = 'var(--grndim)';
+    document.getElementById('bz-form').style.display = 'block';
+    // Sugerir nome
+    if (!document.getElementById('bz-nome-pdf').value) {
+      document.getElementById('bz-nome-pdf').value = file.name.replace('.pdf','');
+    }
+    showToast('PDF pronto!','ok');
+  };
+  reader.onerror = () => showToast('Erro ao ler o PDF','err');
+  reader.readAsDataURL(file);
+}
+
+async function bzGerarTodos() {
+  if (!S.apiKey) { alert('Configure sua API key em Configurações!'); return; }
+  if (!bzPdfBytes) { showToast('Faça o upload do PDF!','err'); return; }
+  const nome = document.getElementById('bz-nome-pdf').value.trim();
+  const matId = parseInt(document.getElementById('bz-mat-sel').value);
+  const pgIni = parseInt(document.getElementById('bz-pg-ini').value);
+  const pgFim = parseInt(document.getElementById('bz-pg-fim').value);
+  if (!nome) { showToast('Informe o nome do PDF!','err'); return; }
+  if (!pgIni || !pgFim || pgFim <= pgIni) { showToast('Informe as páginas corretamente!','err'); return; }
+  const mat = (S.mats||[]).find(m=>m.id===matId);
+  if (!mat) { showToast('Selecione uma matéria!','err'); return; }
+
+  // Calcular blocos estimados
+  const hPorMat = (S.horasDia||2) / Math.max(1, S.matsPerDay||2);
+  const pgPorSessao = Math.round(hPorMat * (S.pph||15));
+  const totalPags = pgFim - pgIni + 1;
+  const nBlocos = Math.ceil(totalPags / pgPorSessao);
+
+  document.getElementById('btn-bz-gerar').style.display = 'none';
+  document.getElementById('bz-gen-progress').style.display = 'block';
+  document.getElementById('bz-gen-txt').textContent = `A IA está lendo ${totalPags} páginas e dividindo em ${nBlocos} blocos de estudo...`;
+  document.getElementById('bz-gen-bar').style.width = '20%';
+
+  const prompt = `Você está analisando um PDF de apostila para concursos fiscais.
+Matéria: ${mat.nome}
+Páginas de teoria: ${pgIni} a ${pgFim} (total: ${totalPags} páginas)
+Páginas por sessão de estudo: aproximadamente ${pgPorSessao} páginas
+
+TAREFA: Leia o conteúdo completo dessas páginas e divida em blocos de estudo respeitando os assuntos. IMPORTANTE: não corte um assunto no meio — sempre termine o bloco no final de um tópico/capítulo, mesmo que ultrapasse ou fique aquém das ${pgPorSessao} páginas estimadas.
+
+Para cada bloco, gere um BIZU estratégico completo.
+
+Retorne APENAS um JSON válido, sem texto antes ou depois, no seguinte formato:
+{
+  "blocos": [
+    {
+      "pgIni": 5,
+      "pgFim": 28,
+      "titulo": "Título descritivo deste bloco",
+      "assuntos": ["Assunto 1", "Assunto 2"],
+      "bizu": "Conteúdo completo do bizu aqui, com **negrito** para termos-chave, macetes, pegadinhas de bancas (CESPE, FCC), artigos relevantes (CTN, CF/88). Seja denso e útil para revisão rápida. Mínimo 200 palavras por bloco."
+    }
+  ]
+}
+
+Regras importantes:
+- Respeite SEMPRE o fim de assunto/tópico para delimitar cada bloco
+- Cada bizu deve ter no mínimo 200 palavras com conteúdo real do PDF
+- Use **negrito** para termos-chave
+- Inclua pegadinhas de bancas relacionadas ao conteúdo real
+- O último bloco sempre termina na página ${pgFim}`;
+
+  try {
+    document.getElementById('bz-gen-bar').style.width = '40%';
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': S.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: bzPdfBytes } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    document.getElementById('bz-gen-bar').style.width = '80%';
+    const data = await resp.json();
+    if (data.error) { showToast('Erro da IA: ' + data.error.message,'err'); return; }
+
+    let txt = data.content[0].text.replace(/```json|```/g,'').trim();
+    const resultado = JSON.parse(txt);
+    const blocos = resultado.blocos;
+
+    document.getElementById('bz-gen-bar').style.width = '90%';
+    document.getElementById('bz-gen-txt').textContent = `✅ ${blocos.length} blocos gerados! Salvando no Firestore...`;
+
+    // Criar entrada no array de bizuPDFs
+    if (!S.bizuPDFs) S.bizuPDFs = [];
+    const novoPdfBizu = {
+      id: Date.now(),
+      nome,
+      matId,
+      matNome: mat.nome,
+      pgIni,
+      pgFim,
+      criadoEm: new Date().toISOString(),
+      blocoAtual: 0, // índice do bloco liberado
+      blocos: blocos.map((b, i) => ({
+        idx: i,
+        pgIni: b.pgIni,
+        pgFim: b.pgFim,
+        titulo: b.titulo,
+        assuntos: b.assuntos || [],
+        bizu: b.bizu,
+        concluido: false,
+        concluidoEm: null
+      }))
+    };
+
+    S.bizuPDFs.push(novoPdfBizu);
+    // Também cadastrar como PDF de estudo se não existir
+    if (!S.pdfs) S.pdfs = [];
+    const jaExiste = S.pdfs.find(p => p.nome === nome && p.matId === matId);
+    if (!jaExiste) {
+      S.pdfs.push({
+        id: Date.now()+1, nome, matId,
+        pgTot: pgFim, pgTeoria: pgFim, pgAtual: pgIni,
+        fase: 'teoria', ordem: S.pdfs.length+1,
+        pph: S.pph||15, obs: '', tecResultados: []
+      });
+    }
+    save();
+    document.getElementById('bz-gen-bar').style.width = '100%';
+    fecharMod('mod-gerador-bizu');
+    rBizu();
+    showToast(`✅ ${blocos.length} bizus gerados e salvos!`,'ok');
+  } catch(e) {
+    console.error(e);
+    showToast('Erro ao processar. Verifique sua API key e tente novamente.','err');
+    document.getElementById('btn-bz-gerar').style.display = 'block';
+    document.getElementById('bz-gen-progress').style.display = 'none';
+  }
+}
+
+function rBizu() {
+  const fp = document.getElementById('bz-filtro-pdf');
+  const pdfs = S.bizuPDFs || [];
+  fp.innerHTML = '<option value="">Todos os PDFs</option>' + pdfs.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  const fP = fp.value;
+  let lista = fP ? pdfs.filter(p=>String(p.id)===fP) : pdfs;
+  const el = document.getElementById('bz-lst');
+  if (!lista.length) {
+    el.innerHTML = `<div class="empty"><div style="font-size:32px;margin-bottom:10px">⚡</div><div class="et">Nenhum PDF com bizus ainda.<br>Clique em "+ Novo PDF" para começar!</div></div>`;
+    return;
+  }
+  el.innerHTML = lista.map(pdf => {
+    const mat = (S.mats||[]).find(m=>m.id===pdf.matId);
+    const blocoAt = pdf.blocos[pdf.blocoAtual] || null;
+    const concluidos = pdf.blocos.filter(b=>b.concluido).length;
+    const total = pdf.blocos.length;
+    const pct = Math.round(concluidos/total*100);
+
+    let blocosHtml = pdf.blocos.map((b,i) => {
+      const liberado = i <= pdf.blocoAtual;
+      const concluido = b.concluido;
+      if (!liberado) {
+        // Bloqueado
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rad);background:var(--sur2);border:1px solid var(--bdr);opacity:.5;margin-bottom:5px">
+          <div style="font-size:18px">🔒</div>
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:600;color:var(--dim)">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div>
+            <div style="font-size:9px;color:var(--dim)">Conclua a meta anterior para desbloquear</div>
+          </div>
+        </div>`;
+      }
+      // Liberado
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rad);background:${concluido?'var(--grndim)':'var(--gglow)'};border:1px solid ${concluido?'rgba(34,197,94,.3)':'rgba(245,166,35,.3)'};margin-bottom:5px;cursor:pointer" onclick="bzVerBizu('${pdf.id}',${i})">
+          <div style="font-size:18px">${concluido?'✅':'📖'}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:700;color:${concluido?'var(--grn)':'var(--gold)'}">${concluido?'✓ Concluída — ':''}Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div>
+            <div style="font-size:10px;color:var(--muted)">${b.titulo}</div>
+            <div style="font-size:9px;color:var(--dim);margin-top:2px">${(b.assuntos||[]).slice(0,3).join(' • ')}</div>
+          </div>
+          <div style="font-size:10px;color:${concluido?'var(--grn)':'var(--gold)'};font-weight:700;white-space:nowrap">Ver bizu →</div>
+        </div>`;
+    }).join('');
+
+    return `<div class="card mb">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+        <div style="flex:1">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px">${pdf.nome}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted)">
+            ${mat?`<span style="color:${mat.cor}">● ${mat.matNome||mat.nome}</span>`:''}
+            <span>📄 pág. ${pdf.pgIni}–${pdf.pgFim}</span>
+            <span>📋 ${total} metas</span>
+            <span>${concluidos}/${total} concluídas</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div>
+            <span style="font-size:10px;color:var(--grn);font-weight:700">${pct}%</span>
+          </div>
+        </div>
+        <button class="btn btn-r btn-xs" onclick="bzDelPDF('${pdf.id}')">🗑</button>
+      </div>
+      <div>${blocosHtml}</div>
+    </div>`;
   }).join('');
 }
-function delBizu(i){if(i<0||i>=(S.bizus||[]).length)return;S.bizus.splice(i,1);save();rBizu();}
-async function gerarBizu(){
-  if(!S.apiKey){alert('Configure sua API key em Configurações!');return;}
-  const matId=parseInt(document.getElementById('bz-mat').value);const pdfId=parseInt(document.getElementById('bz-pdf').value)||null;
-  const mat=(S.mats||[]).find(m=>m.id===matId);if(!mat)return;
-  const pdf=(S.pdfs||[]).find(p=>p.id===pdfId);
-  const top=document.getElementById('bz-top').value.trim();const ref=document.getElementById('bz-ref').value.trim();const pags=document.getElementById('bz-pags').value.trim();
-  const btn=document.getElementById('btn-bizu');btn.disabled=true;btn.textContent='⏳ Gerando...';
-  const prompt=`Crie um BIZU (resumo estratégico) ${top?`sobre "${top}" em`:''} ${mat.nome} para concursos fiscais (SEFAZ, ISS, Receita Federal).
-${ref?`Base-se neste trecho:\n"${ref.substring(0,1800)}"`:''} 
-- Primeira linha: título memorável (sem marcadores)
-- Pontos mais cobrados, macetes, pegadinhas de bancas (CESPE, FCC)
-- Use **negrito** para termos-chave. Máx. 300 palavras.`;
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompt}]})});
-    const data=await r.json();if(data.error){alert('Erro: '+data.error.message);return;}
-    const txt=data.content[0].text;const lines=txt.split('\n').filter(l=>l.trim());
-    const titulo=lines[0].replace(/^#+ ?/,'').trim()||(top||mat.nome+' — Bizu');
-    const cont=lines.slice(1).join('\n').trim();
-    if(!S.bizus)S.bizus=[];
-    S.bizus.push({titulo,cont,matId,pdfId:pdfId||null,pags,mat:mat.nome,data:new Date().toLocaleDateString('pt-BR'),top,criadoEm:new Date().toISOString()});
-    save();rBizu();document.getElementById('bz-top').value='';document.getElementById('bz-ref').value='';document.getElementById('bz-pags').value='';
-    showToast('Bizu gerado e salvo!');
-  }catch(e){alert('Erro de conexão.');}
-  btn.disabled=false;btn.textContent='⚡ Gerar com IA';
+
+function bzVerBizu(pdfId, blocoIdx) {
+  const pdf = (S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));
+  if (!pdf) return;
+  const bloco = pdf.blocos[blocoIdx];
+  if (!bloco) return;
+  bzBlocoAtualId = { pdfId: pdf.id, blocoIdx };
+  const mat = (S.mats||[]).find(m=>m.id===pdf.matId);
+  document.getElementById('bv-titulo').textContent = bloco.titulo;
+  document.getElementById('bv-meta').innerHTML = `
+    ${mat?`<span class="badge bp" style="color:${mat.cor}">📚 ${mat.nome}</span>`:''}
+    <span class="badge bp">📄 ${pdf.nome}</span>
+    <span class="badge bp">📖 pág. ${bloco.pgIni}–${bloco.pgFim}</span>
+    <span class="badge bp">Meta ${blocoIdx+1} de ${pdf.blocos.length}</span>
+    ${bloco.concluido?'<span class="badge ba">✅ Concluída</span>':'<span class="badge" style="background:var(--gglow);color:var(--gold);border:1px solid rgba(245,166,35,.3)">📖 Em estudo</span>'}`;
+  document.getElementById('bv-conteudo').innerHTML =
+    (bloco.bizu||'').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  // Mostrar/ocultar botão de concluir
+  const btnConcluir = document.getElementById('bv-btn-concluir');
+  if (bloco.concluido) {
+    btnConcluir.style.display = 'none';
+  } else {
+    btnConcluir.style.display = 'block';
+    btnConcluir.textContent = blocoIdx < pdf.blocos.length-1
+      ? '✅ Marcar como estudado → liberar próximo bizu'
+      : '✅ Marcar como estudado → PDF concluído!';
+  }
+  document.getElementById('mod-bizu-ver').classList.remove('hidden');
+}
+
+function bzConcluirBloco() {
+  if (!bzBlocoAtualId) return;
+  const { pdfId, blocoIdx } = bzBlocoAtualId;
+  const pdf = (S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));
+  if (!pdf) return;
+  pdf.blocos[blocoIdx].concluido = true;
+  pdf.blocos[blocoIdx].concluidoEm = new Date().toISOString();
+  // Desbloquear próximo
+  if (blocoIdx + 1 < pdf.blocos.length) {
+    pdf.blocoAtual = blocoIdx + 1;
+    showToast(`🎉 Meta ${blocoIdx+1} concluída! Próximo bizu desbloqueado.`, 'ok');
+  } else {
+    showToast('🏆 Todos os bizus deste PDF concluídos!', 'ok');
+  }
+  save();
+  fecharMod('mod-bizu-ver');
+  rBizu();
+}
+
+function bzCopiar() {
+  if (!bzBlocoAtualId) return;
+  const { pdfId, blocoIdx } = bzBlocoAtualId;
+  const pdf = (S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));
+  if (!pdf) return;
+  const b = pdf.blocos[blocoIdx];
+  navigator.clipboard.writeText(b.titulo + '\n\n' + b.bizu).then(()=>showToast('Copiado!','ok'));
+}
+
+function bzDelPDF(pdfId) {
+  if (!confirm('Excluir este PDF e todos os seus bizus?')) return;
+  S.bizuPDFs = (S.bizuPDFs||[]).filter(p=>String(p.id)!==String(pdfId));
+  save(); rBizu();
+  showToast('PDF excluído.','ok');
 }
 
 // ======= QUESTÕES =======
