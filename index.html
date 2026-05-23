@@ -1362,7 +1362,7 @@ Regras importantes:
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 4000,
         messages: [{
           role: 'user',
@@ -1589,7 +1589,7 @@ async function gerarQQIA(){
   const prompt=`Gere 1 questão de concurso fiscal sobre ${mat.nome}. Retorne APENAS JSON válido sem texto extra:
 {"texto":"enunciado","opcoes":[{"l":"A","t":"..."},{"l":"B","t":"..."},{"l":"C","t":"..."},{"l":"D","t":"..."},{"l":"E","t":"..."}],"gab":"A","expl":"explicação","top":"tópico","banca":"Estilo CESPE"}`;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:600,messages:[{role:'user',content:prompt}]})});
     const data=await r.json();if(data.error){alert('Erro: '+data.error.message);return;}
     const q=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());rQQInter(q,mat);
   }catch(e){alert('Erro ao gerar questão.');}
@@ -1685,7 +1685,7 @@ async function sendMsg(){
 Matérias: ${(S.mats||[]).map(m=>m.nome).join(', ')}.${ctxAtual?` Foco: ${ctxAtual}.`:''}
 Seja didático, preciso e encorajador. Cite artigos (CTN, CF/88). Use **negrito** para termos importantes.`;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sys,messages:S.chatH.slice(-12)})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system:sys,messages:S.chatH.slice(-12)})});
     const data=await r.json();typ.remove();
     if(data.error)addMsg('ai','❌ Erro: '+data.error.message);
     else{const rep=data.content[0].text;S.chatH.push({role:'assistant',content:rep});addMsg('ai',rep);save();}
