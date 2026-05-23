@@ -326,7 +326,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 .ibox.red{border-color:rgba(239,68,68,.3);background:var(--reddim)}
 
 /* CHAT */
-.cwrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.cwrap{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 .cmsgs{flex:1;overflow-y:auto;padding:14px 22px;display:flex;flex-direction:column;gap:10px}
 .msg{max-width:76%;padding:10px 13px;border-radius:10px;font-size:12.5px;line-height:1.65}
 .msg.u{align-self:flex-end;background:rgba(245,166,35,.13);border:1px solid rgba(245,166,35,.22);border-bottom-right-radius:3px}
@@ -466,7 +466,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ni" onclick="window.open('jornada.html','_blank')" id="nv-jornada"><span class="ni-ico">📈</span><span>Jornada</span></div>
     </nav>
     <div class="sbfoot">
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.6 — Mai 2026</div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.7 — Mai 2026</div>
       <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
     </div>
   </aside>
@@ -668,7 +668,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
   </div>
 
   <!-- CHAT -->
-  <div id="pg-chat" class="hidden" style="flex-direction:column">
+  <div id="pg-chat" class="hidden" style="flex-direction:column;height:100%;min-height:0">
     <div class="hdr">
       <div class="hdr-l"><div class="pgt">🤖 IA Tutora</div><div class="pgs">Tire dúvidas sobre qualquer matéria</div></div>
       <div class="hdr-r"><button class="btn btn-gh btn-sm" onclick="limparChat()">🗑 Limpar</button></div>
@@ -859,7 +859,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 </div>
 
 <!-- MODAL GERADOR BIZU -->
-<div class="ov hidden" id="mod-gerador-bizu">
+<div class="ov hidden" id="mod-adiar-meta">
+  <div class="modal" style="max-width:380px">
+    <div class="mtitle">📅 Adiar Meta?</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">Selecione quantos dias para prorrogar. <strong style="color:var(--org)">Máximo 3 dias.</strong> Passado esse prazo, será registrado como atraso na Jornada.</div>
+    <div class="fg">
+      <label class="flbl">Número de dias</label>
+      <select class="fs" id="adiar-dias" style="font-size:13px">
+        <option value="">Selecione o número de dias</option>
+        <option value="1">1 dia</option>
+        <option value="2">2 dias</option>
+        <option value="3">3 dias</option>
+      </select>
+    </div>
+    <div class="mfoot" style="margin-top:16px">
+      <button class="btn btn-o" onclick="fecharMod('mod-adiar-meta')" style="flex:1">Cancelar</button>
+      <button class="btn btn-g" onclick="confirmarAdiamento()" style="flex:1">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+
   <div class="modal modal-lg">
     <div class="mtitle">⚡ Gerar Bizus — Nova Matéria</div>
     <div class="frow">
@@ -1290,7 +1310,26 @@ function rDashTabela() {
     </tr>`;
   }).join('')}</tbody></table>`;
 }
-function abrirModalMeta(){showToast('Funcionalidade em breve','ok');}
+function abrirModalMeta(){
+  document.getElementById('adiar-dias').value='';
+  document.getElementById('mod-adiar-meta').classList.remove('hidden');
+}
+function confirmarAdiamento(){
+  const dias=parseInt(document.getElementById('adiar-dias').value);
+  if(!dias||dias<1||dias>3){showToast('Selecione 1, 2 ou 3 dias','err');return;}
+  const metaNum=S.metaAtual||1;
+  if(!S.metas)S.metas={};
+  if(!S.metas[metaNum])S.metas[metaNum]=getMeta(metaNum);
+  // Registrar adiamento
+  if(!S.metas[metaNum].adiamentos)S.metas[metaNum].adiamentos=[];
+  S.metas[metaNum].adiamentos.push({data:td(),dias});
+  S.metas[metaNum].prazoExtra=(S.metas[metaNum].prazoExtra||0)+dias;
+  S.metas[metaNum].status='adiamento';
+  save();
+  fecharMod('mod-adiar-meta');
+  rDash();
+  showToast(`Meta adiada em ${dias} dia${dias>1?'s':''}. Registrado na Jornada.`,'ok');
+}
 function gerarPlanoHoje(){
   const metaNum=S.metaAtual||1;
   if(!S.metas)S.metas={};
@@ -1412,11 +1451,23 @@ function paFinalizar(){
   a.status='concluida';a.tempo=timerSecs/3600;
   const conc=meta.atividades.filter(x=>x.status==='concluida').length;
   if(conc>=meta.atividades.length){
-    // Avançar para próxima meta
+    // Calcular status da meta ao concluir
+    const prazoExtra=meta.prazoExtra||0;
+    const hoje=td();
+    const iniciada=meta.iniciada||hoje;
+    const diasDecorridos=Math.round((new Date(hoje+'T12:00:00')-new Date(iniciada+'T12:00:00'))/86400000);
+    const diasEsperados=7; // meta semanal
+    const atraso=Math.max(0, diasDecorridos - diasEsperados - prazoExtra);
+    // Salvar status final da meta
     if(!S.metas)S.metas={};
+    meta.concluidaEm=hoje;
+    meta.diasDecorridos=diasDecorridos;
+    meta.atraso=atraso;
+    meta.status=atraso>0?'atraso':prazoExtra>0?'adiamento':'em_dia';
     S.metas[paMetaNum]=meta;
     S.metaAtual=(S.metaAtual||1)+1;
-    showToast(`🎉 Meta ${paMetaNum} concluída! Avançando para Meta ${S.metaAtual}`,'ok');
+    const statusTxt=atraso>0?`com ${atraso} dia${atraso>1?'s':''} de atraso`:prazoExtra>0?`com adiamento de ${prazoExtra} dia${prazoExtra>1?'s':''}`:'em dia';
+    showToast(`🎉 Meta ${paMetaNum} concluída ${statusTxt}! Avançando para Meta ${S.metaAtual}`,'ok');
   } else {showToast('✅ Atividade finalizada!','ok');}
   save();fecharPopupAtiv();rDash();
 }
@@ -1436,18 +1487,25 @@ function rArquivo(){
   el.innerHTML=metasArr.map(meta=>{
     const ativs=meta.atividades||[];const conc=ativs.filter(a=>a.status==='concluida').length;
     const isAberta=arquivoMetaAberta===meta.num;
+    const sm=meta.status||'em_andamento';
+    const sl=sm==='atraso'?`Com atraso${meta.atraso?` (+${meta.atraso}d)`:''}`
+            :sm==='adiamento'?`Adiamento${meta.prazoExtra?` (+${meta.prazoExtra}d)`:''}`
+            :conc>=ativs.length?'Em dia':'Em andamento';
+    const sc=sm==='atraso'?'mcs-atraso':sm==='adiamento'?'mcs-adiamento':conc>=ativs.length?'mcs-dia':'mcs-adiamento';
+    const diasInfo=meta.prazoExtra?`📅 +${meta.prazoExtra}d adiado`:'';
     return `<div class="meta-card ${isAberta?'ativa':''}" onclick="toggleArquivoMeta(${meta.num})">
       <div class="meta-card-hdr">
         <span class="meta-card-num">Meta ${meta.num}</span>
-        <span class="meta-card-status ${conc>=ativs.length?'mcs-dia':'mcs-adiamento'}">${conc>=ativs.length?'Concluída':'Em andamento'}</span>
+        <span class="meta-card-status ${sc}">${sl}</span>
       </div>
       <div class="meta-card-dots">
         <span class="ativ-dot pendente"></span>${ativs.filter(a=>a.status==='pendente').length}
         &nbsp;<span class="ativ-dot concluida"></span>${conc}
         &nbsp;<span class="ativ-dot erro"></span>${ativs.filter(a=>a.status==='erro').length}
       </div>
-      <div>Atividades: ${ativs.length}</div>
-      <div class="meta-card-tempo">⏱ Iniciada: ${fmt(meta.iniciada)||'—'}</div>
+      <div style="font-size:11px">Atividades: ${ativs.length}</div>
+      <div class="meta-card-tempo">📅 Iniciada: ${fmt(meta.iniciada)||'—'}</div>
+      ${diasInfo?`<div style="font-size:9px;color:var(--org);margin-top:2px">${diasInfo}</div>`:''}
       <div style="font-size:9px;color:var(--gold);margin-top:4px">${isAberta?'∧ Fechar':'∨ Ver detalhes'}</div>
     </div>`;
   }).join('');

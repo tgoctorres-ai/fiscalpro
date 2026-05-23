@@ -310,16 +310,27 @@ function renderHM() {
     leg.innerHTML = `
       <div class="hm-leg-item"><div class="hm-dot" style="background:var(--grn)"></div>Em dia</div>
       <div class="hm-leg-item"><div class="hm-dot" style="background:var(--org)"></div>Adiamento</div>
-      <div class="hm-leg-item"><div class="hm-dot" style="background:var(--red)"></div>Com atraso</div>`;
+      <div class="hm-leg-item"><div class="hm-dot" style="background:var(--red)"></div>Com atraso</div>
+      <div class="hm-leg-item"><div class="hm-dot" style="background:var(--sur2);border:1px solid var(--bdr)"></div>Em andamento</div>`;
     let html = '';
     for (let i=1; i<=metaAtual; i++) {
       const meta = metas[i];
-      const conc = meta?(meta.atividades||[]).filter(a=>a.status==='concluida').length:0;
-      const tot = meta?(meta.atividades||[]).length:0;
-      const pct = tot>0?Math.round(conc/tot*100):0;
-      const bg = pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
-      const lbl = pct>=100?'✓':pct>=70?'~':'!';
-      html += `<div class="hm-cell" style="background:${bg};color:#fff" title="Meta ${i}: ${pct}% concluída">${i}</div>`;
+      const sm = meta?.status || 'em_andamento';
+      let bg, label, title;
+      if(sm === 'atraso'){
+        bg='var(--red)'; label=meta.atraso?`+${meta.atraso}d`:'!';
+        title=`Meta ${i}: Atraso de ${meta.atraso||'?'} dia(s)`;
+      } else if(sm === 'adiamento'){
+        bg='var(--org)'; label=meta.prazoExtra?`+${meta.prazoExtra}d`:'~';
+        title=`Meta ${i}: Adiamento de ${meta.prazoExtra||'?'} dia(s)`;
+      } else if(sm === 'em_dia' || (meta?.concluidaEm)){
+        bg='var(--grn)'; label='✓';
+        title=`Meta ${i}: Em dia`;
+      } else {
+        bg='var(--sur2)'; label=String(i);
+        title=`Meta ${i}: Em andamento`;
+      }
+      html += `<div class="hm-cell" style="background:${bg};color:${sm==='em_andamento'?'var(--dim)':'#fff'};border:${sm==='em_andamento'?'1px solid var(--bdr)':'none'}" title="${title}">${label}</div>`;
     }
     grid.innerHTML = html || '<div style="color:var(--dim);font-size:12px">Nenhuma meta ainda</div>';
   }
