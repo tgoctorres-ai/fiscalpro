@@ -1357,16 +1357,16 @@ async function bzGerarTodos() {
       document.getElementById('bz-gen-txt').textContent = bzPdfPartes.length > 1
         ? 'Processando parte ' + (i+1) + ' de ' + bzPdfPartes.length + '...'
         : 'A IA esta lendo o PDF e dividindo em blocos...';
-      const prompt = 'Voce esta analisando ' + (bzPdfPartes.length > 1 ? 'a PARTE ' + (i+1) + ' de ' + bzPdfPartes.length + ' de um PDF' : 'um PDF') + ' de apostila para concursos fiscais.
-Materia: ' + mat.nome + '
-Paginas de teoria total: ' + pgIni + ' a ' + pgFim + '
-Paginas por sessao: aproximadamente ' + pgPorSessao + '
-
-TAREFA: Leia e divida em blocos respeitando fim de assunto. Nunca corte um topico no meio.
-' + (i > 0 ? 'Continue a numeracao de paginas do PDF original.' : '') + '
-
-Retorne APENAS JSON valido:
-{"blocos":[{"pgIni":5,"pgFim":28,"titulo":"Titulo","assuntos":["A1"],"bizu":"Bizu completo com **negrito**, macetes, pegadinhas CESPE/FCC, artigos CTN/CF88. Minimo 200 palavras."}]}';
+      const parteDesc = bzPdfPartes.length > 1 ? ('a PARTE ' + (i+1) + ' de ' + bzPdfPartes.length + ' de um PDF') : 'um PDF';
+      const contPags = i > 0 ? 'Continue a numeracao de paginas do PDF original.' : '';
+      const prompt = 'Voce esta analisando ' + parteDesc + ' de apostila para concursos fiscais.' +
+        ' Materia: ' + mat.nome + '.' +
+        ' Paginas totais: ' + pgIni + ' a ' + pgFim + '.' +
+        ' Paginas por sessao: aprox. ' + pgPorSessao + '.' +
+        ' ' + contPags +
+        ' TAREFA: Leia e divida em blocos respeitando fim de assunto/topico. Nunca corte no meio de um assunto.' +
+        ' Retorne APENAS JSON valido sem nenhum texto antes ou depois:' +
+        ' {"blocos":[{"pgIni":5,"pgFim":28,"titulo":"Titulo do bloco","assuntos":["Assunto1","Assunto2"],"bizu":"Bizu completo com negrito para termos-chave. Macetes e pegadinhas CESPE FCC. Artigos CTN CF88 relevantes. Minimo 200 palavras por bloco."}]}';
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
