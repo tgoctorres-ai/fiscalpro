@@ -874,6 +874,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="modo-sel">
         <div id="modo-btn-upload" class="modo-btn on" onclick="bzSetModo('upload')"><div class="mi">📄</div><div class="ml">Upload do PDF</div><div class="ms">Enviar arquivo direto</div></div>
         <div id="modo-btn-texto" class="modo-btn" onclick="bzSetModo('texto')"><div class="mi">📋</div><div class="ml">Colar o Texto</div><div class="ms">Copiar e colar do PDF</div></div>
+        <div id="modo-btn-pronto" class="modo-btn" onclick="bzSetModo('pronto')"><div class="mi">⚡</div><div class="ml">Bizu Pronto</div><div class="ms">Cole seu bizu já feito</div></div>
       </div>
     </div>
     <div id="bz-modo-upload">
@@ -886,6 +887,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ibox mb" style="margin-bottom:6px">📋 Abra o PDF → selecione o texto das páginas de teoria → Ctrl+C → cole aqui.</div>
       <textarea class="fta" id="bz-texto-pdf" style="min-height:150px;font-size:11px" placeholder="Cole aqui o texto copiado do seu PDF..."></textarea>
       <div id="bz-texto-count" style="font-size:9px;color:var(--muted);margin-top:3px">0 caracteres</div>
+    </div>
+    <div id="bz-modo-pronto" style="display:none">
+      <div class="ibox gold mb" style="margin-bottom:8px">⚡ <strong style="color:var(--txt)">Bizu Pronto:</strong> Cole aqui o bizu já formatado — do Estratégia, ChatGPT, ou qualquer fonte. O sistema vai dividir em blocos automaticamente e salvar com o mesmo visual dos outros bizus. Use <strong style="color:var(--gold)"># para títulos</strong> e <strong style="color:var(--gold)">## para subtítulos</strong>.</div>
+      <div class="fg"><label class="flbl">Título do bloco</label><input type="text" class="fi" id="bz-pronto-titulo" placeholder="Ex: Conceito de Tributo — Arts. 1-18 CTN"></div>
+      <div class="fg">
+        <label class="flbl">Conteúdo do Bizu</label>
+        <textarea class="fta" id="bz-pronto-conteudo" style="min-height:220px;font-size:11px" placeholder="Cole seu bizu aqui. Exemplos de formatação:&#10;&#10;# 1. CONCEITO DE TRIBUTO&#10;## 1.1. Definição&#10;- **CTN, Art. 3º**: Toda prestação pecuniária compulsória...&#10;&#10;## Checklist&#10;1. O que é tributo?&#10;R: Prestação pecuniária compulsória..."></textarea>
+        <div id="bz-pronto-count" style="font-size:9px;color:var(--muted);margin-top:3px">0 caracteres</div>
+      </div>
+      <div class="fg"><label class="flbl">Assuntos abordados (separados por vírgula)</label><input type="text" class="fi" id="bz-pronto-assuntos" placeholder="Ex: Conceito de Tributo, Espécies Tributárias, CTN Art. 3º"></div>
+      <div class="ibox mb" style="font-size:11px">💡 Você pode adicionar <strong style="color:var(--txt)">múltiplos blocos</strong> ao mesmo PDF — basta salvar este e clicar em "+ Novo Bloco" na lista de bizus.</div>
     </div>
     <div style="margin-top:12px">
       <button class="btn btn-g" onclick="bzGerarTodos()" id="btn-bz-gerar" style="width:100%">⚡ Gerar Bizus com IA</button>
@@ -1612,10 +1624,16 @@ function marcarRev(id){
 let bzPdfPartes=[],bzBlocoAtualId=null,bzModoAtual='upload';
 function bzSetModo(m){
   bzModoAtual=m;
-  document.getElementById('modo-btn-upload').classList.toggle('on',m==='upload');
-  document.getElementById('modo-btn-texto').classList.toggle('on',m==='texto');
+  ['upload','texto','pronto'].forEach(id=>{
+    const btn=document.getElementById('modo-btn-'+id);
+    if(btn) btn.classList.toggle('on',m===id);
+  });
   document.getElementById('bz-modo-upload').style.display=m==='upload'?'block':'none';
   document.getElementById('bz-modo-texto').style.display=m==='texto'?'block':'none';
+  document.getElementById('bz-modo-pronto').style.display=m==='pronto'?'block':'none';
+  // Atualizar texto do botão gerar
+  const btn=document.getElementById('btn-bz-gerar');
+  if(btn) btn.textContent=m==='pronto'?'💾 Salvar Bizu Pronto':'⚡ Gerar Bizus com IA';
 }
 function abrirGeradorBizu(){
   bzPdfPartes=[];
@@ -1634,6 +1652,11 @@ function abrirGeradorBizu(){
     const n=this.value.length,tok=Math.round(n/4);
     document.getElementById('bz-texto-count').innerHTML=n.toLocaleString()+' chars (~'+tok.toLocaleString()+' tokens) '+(tok>150000?'<strong style="color:var(--red)">⚠️ Muito grande!</strong>':tok>80000?'<span style="color:var(--org)">Grande — pode funcionar</span>':'<span style="color:var(--grn)">✓ OK</span>');
   };
+  const pc=document.getElementById('bz-pronto-conteudo');
+  if(pc){pc.oninput=function(){const el=document.getElementById('bz-pronto-count');if(el)el.textContent=this.value.length.toLocaleString()+' caracteres';};}
+  // Limpar campos do modo pronto
+  ['bz-pronto-titulo','bz-pronto-assuntos'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const pc2=document.getElementById('bz-pronto-conteudo');if(pc2)pc2.value='';
 }
 function bzCarregarPDF(event){
   const files=Array.from(event.target.files);if(!files.length)return;
@@ -1671,6 +1694,28 @@ async function bzGerarTodos(){
   if(!pgIni||!pgFim||pgFim<=pgIni){showToast('Informe as páginas corretamente!','err');return;}
   const mat=(S.mats||[]).find(m=>m.id===matId);if(!mat){showToast('Selecione uma matéria!','err');return;}
   if(bzModoAtual==='texto'){const tx=document.getElementById('bz-texto-pdf').value.trim();if(!tx||tx.length<200){showToast('Cole o texto das páginas!','err');return;}}
+  else if(bzModoAtual==='pronto'){
+    // MODO PRONTO: salva direto sem chamar IA
+    const titulo=document.getElementById('bz-pronto-titulo').value.trim()||'Bizu '+nome;
+    const conteudo=document.getElementById('bz-pronto-conteudo').value.trim();
+    const assuntosStr=document.getElementById('bz-pronto-assuntos').value.trim();
+    if(!conteudo||conteudo.length<50){showToast('Cole o conteúdo do bizu!','err');return;}
+    const assuntos=assuntosStr?assuntosStr.split(',').map(s=>s.trim()).filter(Boolean):[];
+    if(!S.bizuPDFs)S.bizuPDFs=[];
+    // Verificar se já existe um PDF com esse nome para adicionar bloco
+    let pdfExist=(S.bizuPDFs||[]).find(p=>p.nome===nome&&p.matId===matId);
+    if(pdfExist){
+      // Adicionar bloco ao PDF existente
+      const novoIdx=pdfExist.blocos.length;
+      pdfExist.blocos.push({idx:novoIdx,pgIni,pgFim,titulo,assuntos,bizu:conteudo,concluido:false,concluidoEm:null});
+      pdfExist.blocoAtual=Math.min(pdfExist.blocoAtual,novoIdx);
+    } else {
+      S.bizuPDFs.push({id:Date.now(),nome,matId,matNome:mat.nome,pgIni,pgFim,modo:'pronto',criadoEm:new Date().toISOString(),blocoAtual:0,blocos:[{idx:0,pgIni,pgFim,titulo,assuntos,bizu:conteudo,concluido:false,concluidoEm:null}]});
+      if(!S.pdfs)S.pdfs=[];
+      if(!S.pdfs.find(p=>p.nome===nome&&p.matId===matId))S.pdfs.push({id:Date.now()+1,nome,matId,pgTot:pgFim,pgTeoria:pgFim,pgAtual:pgIni,fase:'teoria',ordem:S.pdfs.length+1,pph:S.pph||15,obs:'',tecResultados:[]});
+    }
+    save();fecharMod('mod-gerador-bizu');rBizu();showToast('✅ Bizu salvo!','ok');return;
+  }
   else{if(!bzPdfPartes.length){showToast('Faça o upload do PDF!','err');return;}}
   const hPorMat=(S.horasDia||2)/Math.max(1,S.matsPerDay||2);
   const pgPorSessao=Math.round(hPorMat*(S.pph||15));
@@ -1708,7 +1753,7 @@ async function bzGerarTodos(){
           +' Para cada bloco gere bizu hierarquico (1, 1.1, 1.2...) com exemplos, macetes CESPE/FCC, artigos CTN/CF88 e checklist ao final.'
           +' JSON: {"blocos":[{"pgIni":'+pgIniParte+',"pgFim":'+pgFimParte+',"titulo":"T","assuntos":["A"],"bizu":"# 1. TITULO\n\nConteudo hierarquico **negrito** exemplos macetes.\n\n## Checklist\n1. Pergunta?\nR: Resposta"}]}'
           +'\n\nTEXTO:\n'+partesTxt[pi];
-        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
+        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:prompt}]})});
         const data=await resp.json();
         if(data.error){showToast('Erro IA parte '+(pi+1)+': '+data.error.message,'err');return;}
         let txt=data.content[0].text.replace(/```json|```/g,'').trim();
@@ -1733,7 +1778,7 @@ async function bzGerarTodos(){
         if(tamanhoMB>15){showToast('Parte '+(i+1)+' muito grande. Use PDFs menores (~50 pág).','err');return;}
         const parteDesc=bzPdfPartes.length>1?'PARTE '+(i+1)+' de '+bzPdfPartes.length:'PDF';
         const prompt='Materia: '+mat.nome+'. '+parteDesc+'. Pags: '+pgIni+'-'+pgFim+'. Sessao ~'+pgPorSessao+' pag. '+(i>0?'Continue numeracao original.':'')+' Divida em blocos por assunto. Bizu COMPLETO hierarquico com exemplos e checklist ao final. JSON: {"blocos":[{"pgIni":1,"pgFim":20,"titulo":"T","assuntos":["A"],"bizu":"# 1. TITULO\\n\\nConteudo com **negrito**, exemplos, macetes CESPE FCC, artigos CTN CF88.\\n\\n## Checklist\\n1. Pergunta?\\nR: Resposta"}]}';
-        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},{type:'text',text:prompt}]}]})});
+        const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:parte.bytes}},{type:'text',text:prompt}]}]})});
         const data=await resp.json();if(data.error){showToast('Erro IA parte '+(i+1)+': '+data.error.message,'err');return;}
         let txt=data.content[0].text.replace(/```json|```/g,'').trim();
         const jm=txt.match(/\{[\s\S]*\}/);if(jm)txt=jm[0];
@@ -1768,7 +1813,7 @@ function rBizu(){
       if(!lib)return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--rad);background:var(--sur2);border:1px solid var(--bdr);opacity:.45;margin-bottom:4px"><div style="font-size:16px">🔒</div><div><div style="font-size:11px;font-weight:600;color:var(--dim)">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div><div style="font-size:9px;color:var(--dim)">Conclua a meta anterior</div></div></div>`;
       return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--rad);background:${concl?'var(--grndim)':'var(--gglow)'};border:1px solid ${concl?'rgba(34,197,94,.3)':'rgba(245,166,35,.3)'};margin-bottom:4px;cursor:pointer" onclick="bzVerBizu('${pdf.id}',${i})"><div style="font-size:16px">${concl?'✅':'📖'}</div><div style="flex:1"><div style="font-size:11px;font-weight:700;color:${concl?'var(--grn)':'var(--gold)'}">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div><div style="font-size:10px;color:var(--muted)">${b.titulo}</div><div style="font-size:9px;color:var(--dim);margin-top:1px">${(b.assuntos||[]).slice(0,3).join(' • ')}</div></div><div style="font-size:10px;color:${concl?'var(--grn)':'var(--gold)'};font-weight:700">Ver bizu →</div></div>`;
     }).join('');
-    return `<div class="card mb"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px"><div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px">${pdf.nome}</div><div style="display:flex;gap:7px;flex-wrap:wrap;font-size:10px;color:var(--muted)">${mat?`<span style="color:${mat.cor}">● ${mat.nome}</span>`:''}<span>📄 pág. ${pdf.pgIni}–${pdf.pgFim}</span><span>📋 ${total} metas</span><span>${conc}/${total} concluídas</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div><span style="font-size:10px;color:var(--grn);font-weight:700">${pct}%</span></div></div><button class="btn btn-r btn-xs" onclick="bzDelPDF('${pdf.id}')">🗑</button></div>${blocosHtml}</div>`;
+    return `<div class="card mb"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px"><div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px">${pdf.nome}</div><div style="display:flex;gap:7px;flex-wrap:wrap;font-size:10px;color:var(--muted)">${mat?`<span style="color:${mat.cor}">● ${mat.nome}</span>`:''}<span>📄 pág. ${pdf.pgIni}–${pdf.pgFim}</span><span>📋 ${total} metas</span><span>${conc}/${total} concluídas</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div><span style="font-size:10px;color:var(--grn);font-weight:700">${pct}%</span></div></div><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="bzAdicionarBloco('${pdf.id}')" title="Adicionar bloco">+ Bloco</button><button class="btn btn-r btn-xs" onclick="bzDelPDF('${pdf.id}')">🗑</button></div></div>${blocosHtml}</div>`;
   }).join('');
 }
 function bzVerBizu(pdfId,blocoIdx){
@@ -1794,6 +1839,26 @@ function bzConcluirBloco(){
   if(blocoIdx+1<pdf.blocos.length){pdf.blocoAtual=blocoIdx+1;showToast(`🎉 Meta ${blocoIdx+1} concluída! Próximo bizu desbloqueado.`,'ok');}
   else showToast('🏆 Todos os bizus deste PDF concluídos!','ok');
   save();fecharMod('mod-bizu-ver');rBizu();
+}
+function bzAdicionarBloco(pdfId){
+  // Abre modal em modo pronto com o PDF pré-selecionado
+  const pdf=(S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));
+  if(!pdf)return;
+  abrirGeradorBizu();
+  setTimeout(()=>{
+    document.getElementById('bz-nome-pdf').value=pdf.nome;
+    // Selecionar matéria correta
+    const sel=document.getElementById('bz-mat-sel');
+    for(let o of sel.options) if(parseInt(o.value)===pdf.matId) o.selected=true;
+    // Sugerir páginas do próximo bloco
+    const ultimo=pdf.blocos[pdf.blocos.length-1];
+    if(ultimo){
+      document.getElementById('bz-pg-ini').value=ultimo.pgFim+1;
+      document.getElementById('bz-pg-fim').value=pdf.pgFim;
+    }
+    bzSetModo('pronto');
+    document.getElementById('bz-pronto-titulo').focus();
+  },100);
 }
 function bzCopiar(){
   if(!bzBlocoAtualId)return;const{pdfId,blocoIdx}=bzBlocoAtualId;
