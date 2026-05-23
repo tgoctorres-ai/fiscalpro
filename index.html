@@ -466,7 +466,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       </div>
       <div class="fg">
         <label class="flbl">① Selecione o(s) arquivo(s) PDF</label>
-        <div class="ibox mb" style="margin-bottom:8px">⚠️ A API aceita no máximo <strong style="color:var(--txt)">100 páginas por arquivo</strong>. Se seu PDF tiver mais de 100 páginas, divida em partes e faça upload de todas aqui. Ex: PDF parte 1 (pág. 1–100) + PDF parte 2 (pág. 101–200).</div>
+        <div class="ibox mb" style="margin-bottom:8px">⚠️ A API aceita no máximo <strong style="color:var(--txt)">~50 páginas por arquivo</strong> para gerar bizus com qualidade. Se seu PDF tiver mais páginas, divida em partes de 40-50 páginas e faça upload de todas aqui de uma vez. Use <strong style="color:var(--gold)">ilovepdf.com</strong> para dividir gratuitamente.</div>
         <div id="bz-upload-area" onclick="document.getElementById('bz-file-input').click()"
           style="border:2px dashed var(--bdr2);border-radius:var(--rad);padding:22px;text-align:center;cursor:pointer;background:var(--sur2);transition:all .2s">
           <div style="font-size:28px;margin-bottom:6px">📄</div>
@@ -1357,16 +1357,15 @@ async function bzGerarTodos() {
       document.getElementById('bz-gen-txt').textContent = bzPdfPartes.length > 1
         ? 'Processando parte ' + (i+1) + ' de ' + bzPdfPartes.length + '...'
         : 'A IA esta lendo o PDF e dividindo em blocos...';
-      const parteDesc = bzPdfPartes.length > 1 ? ('a PARTE ' + (i+1) + ' de ' + bzPdfPartes.length + ' de um PDF') : 'um PDF';
-      const contPags = i > 0 ? 'Continue a numeracao de paginas do PDF original.' : '';
-      const prompt = 'Voce esta analisando ' + parteDesc + ' de apostila para concursos fiscais.' +
-        ' Materia: ' + mat.nome + '.' +
-        ' Paginas totais: ' + pgIni + ' a ' + pgFim + '.' +
-        ' Paginas por sessao: aprox. ' + pgPorSessao + '.' +
-        ' ' + contPags +
-        ' TAREFA: Leia e divida em blocos respeitando fim de assunto/topico. Nunca corte no meio de um assunto.' +
-        ' Retorne APENAS JSON valido sem nenhum texto antes ou depois:' +
-        ' {"blocos":[{"pgIni":5,"pgFim":28,"titulo":"Titulo do bloco","assuntos":["Assunto1","Assunto2"],"bizu":"Bizu completo com negrito para termos-chave. Macetes e pegadinhas CESPE FCC. Artigos CTN CF88 relevantes. Minimo 200 palavras por bloco."}]}';
+      const prompt = 'Materia: ' + mat.nome + '. Sessao: ' + pgPorSessao + ' pag. Divida este PDF em blocos por assunto. JSON: {"blocos":[{"pgIni":1,"pgFim":20,"titulo":"T","assuntos":["A"],"bizu":"bizu denso 200+ palavras **negrito** termos-chave macetes pegadinhas CESPE FCC artigos CTN CF88"}]}';
+      // Verificar tamanho estimado (base64 ~1.33x tamanho original, ~4 chars por token)
+      const tamanhoMB = (parte.bytes.length * 0.75) / (1024*1024);
+      if (tamanhoMB > 15) {
+        showToast('Parte ' + (i+1) + ' muito grande (' + tamanhoMB.toFixed(0) + 'MB). Divida em PDFs menores (max ~50 pag cada).', 'err');
+        document.getElementById('btn-bz-gerar').style.display = 'block';
+        document.getElementById('bz-gen-progress').style.display = 'none';
+        return;
+      }
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
