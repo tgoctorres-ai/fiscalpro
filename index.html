@@ -370,20 +370,150 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 .modo-btn .ms{font-size:9px;color:var(--dim);margin-top:2px}
 
 @media(max-width:768px){
-  .sb{width:46px;min-width:46px}
-  .ni span:not(.ni-ico){display:none}
-  .logo-txt,.logo-sub{display:none}
-  .sbfoot,.nsec{display:none}
-  .logo{padding:8px}
-  .g4{grid-template-columns:repeat(2,1fr)}
-  .g2,.g32{grid-template-columns:1fr}
-  .content{padding:10px 12px}
-  .hdr{padding:8px 12px}
-  .cmsgs,.cbar{padding:10px 12px}
-  .msg{max-width:90%}
-  .timer-bar{padding:0 10px;gap:8px}
-  .timer-display{font-size:15px}
+  /* ===== LAYOUT GERAL ===== */
+  .app{height:100dvh;height:100vh}
+  .app-body{flex-direction:column;overflow:hidden}
+
+  /* ===== TIMER BAR — compacto ===== */
+  .timer-bar{padding:0 8px;gap:6px;height:38px;overflow:hidden;flex-wrap:nowrap}
+  .timer-tabs{gap:1px}
+  .timer-tab{padding:3px 8px;font-size:10px}
+  .timer-display{font-size:14px;min-width:72px;letter-spacing:1px}
+  .tbtn{padding:4px 8px;font-size:10px;gap:3px}
+  .timer-sep{display:none}
+  .timer-materia{display:none}
+  #user-av-bar{display:none}
+  #sync-badge{font-size:8px;padding:1px 5px}
+
+  /* ===== SIDEBAR — bottom nav bar ===== */
+  .sb{
+    width:100%!important;min-width:unset!important;
+    height:52px;min-height:52px;flex-shrink:0;
+    border-right:none;border-top:1px solid var(--bdr);
+    flex-direction:row;align-items:center;
+    order:2;overflow-x:auto;overflow-y:hidden;
+    padding:0 4px;gap:0;
+    position:relative;
+  }
+  .logo,.user-bar,.sbfoot,.nsec{display:none!important}
+  .nav{display:flex;flex-direction:row;align-items:center;padding:0;gap:0;overflow-x:auto;flex:1;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .nav::-webkit-scrollbar{display:none}
+  .ni{
+    flex-direction:column;align-items:center;justify-content:center;
+    padding:4px 10px;gap:1px;border-left:none;border-bottom:3px solid transparent;
+    min-width:52px;height:52px;flex-shrink:0;font-size:9px;
+    white-space:nowrap;
+  }
+  .ni.on{border-left:none;border-bottom:3px solid var(--gold);background:var(--gglow)}
+  .ni-ico{font-size:16px;width:auto}
+  .ni span:not(.ni-ico){display:block;font-size:8px;color:inherit}
+  .nbdg{position:absolute;top:4px;right:4px;margin-left:0;font-size:7px;padding:1px 3px}
+
+  /* ===== MAIN ===== */
+  .main{order:1;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+
+  /* ===== HEADER DE PÁGINA ===== */
+  .hdr{padding:8px 12px;gap:6px;flex-wrap:wrap}
+  .pgt{font-size:13px}
+  .pgs{font-size:9px}
+  .hdr-r{gap:4px;flex-wrap:wrap}
+  .hdr-r .btn{padding:4px 8px;font-size:10px}
+  .dpill{font-size:9px;padding:2px 7px}
+
+  /* ===== CONTENT ===== */
+  .content{padding:10px 12px;flex:1;overflow-y:auto}
+
+  /* ===== DASHBOARD ===== */
+  .g32{grid-template-columns:1fr!important;gap:10px}
+
+  /* Barra de progresso da meta — compacta */
+  .meta-bar-wrap{padding:12px 14px}
+  .meta-bar-top{flex-wrap:wrap;gap:6px}
+  .meta-titulo{display:none}
+  .meta-contagem{font-size:10px}
+  .meta-bar-track{height:18px}
+  .foguete{font-size:16px}
+
+  /* Próxima meta — inline em mobile */
+  .meta-proxima{
+    flex-direction:row;align-items:center;gap:12px;
+    padding:10px 14px;justify-content:flex-start;
+  }
+  .meta-lock{font-size:18px;margin:0}
+  .meta-prox-label{font-size:8px}
+  .meta-prox-num{font-size:12px}
+  .meta-prox-data{font-size:10px}
+
+  /* 4 Cards coloridos — 2x2 */
+  .g4{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .stat-card{padding:12px 14px}
+  .stat-val{font-size:22px}
+  .stat-label{font-size:10px;margin-bottom:5px}
+  .stat-ico{font-size:22px;right:10px;bottom:8px}
+
+  /* Abas e tabela */
+  .card{padding:10px 12px}
+  #tab-ativ,#tab-reforc{padding:4px 8px;font-size:10px}
+  .btn-sm{padding:4px 8px;font-size:10px}
+
+  /* Tabela de atividades — esconder colunas menos importantes */
+  .ativ-table th:nth-child(5),
+  .ativ-table td:nth-child(5),
+  .ativ-table th:nth-child(6),
+  .ativ-table td:nth-child(6),
+  .ativ-table th:nth-child(7),
+  .ativ-table td:nth-child(7){display:none}
+  .ativ-table th{font-size:8px;padding:5px 6px}
+  .ativ-table td{font-size:11px;padding:7px 6px}
+  .tipo-badge{font-size:8px;padding:1px 5px}
+  .stars{font-size:9px}
+
+  /* ===== CHAT ===== */
+  .cmsgs{padding:10px 12px}
+  .cbar{padding:8px 12px}
+  .msg{max-width:92%;font-size:12px}
+  .chips{gap:3px}
+  .chip{font-size:8px;padding:2px 6px}
+
+  /* ===== MODAIS ===== */
+  .ov{padding:8px;align-items:flex-end}
+  .modal{border-radius:var(--radl) var(--radl) 0 0;max-height:92vh;padding:18px 16px}
+  .modal-lg{max-width:100%}
+  .frow{flex-direction:column;gap:0}
+  .frow .fg{margin-bottom:10px}
+
+  /* ===== POPUP ATIVIDADE ===== */
+  .popup-ativ{border-radius:var(--radl) var(--radl) 0 0;max-height:88vh}
+  .popup-hdr{flex-wrap:wrap;gap:6px;padding:10px 14px}
+  .popup-titulo{font-size:12px}
+  .popup-section-body{padding:10px 14px;font-size:12px}
+
+  /* ===== BIZUS ===== */
+  .modo-sel{flex-direction:column;gap:6px}
+  .modo-btn{padding:8px;display:flex;flex-direction:row;align-items:center;gap:8px;text-align:left}
+  .modo-btn .mi{font-size:16px;margin-bottom:0}
+  .modo-btn .ms{display:none}
+
+  /* ===== ARQUIVO ===== */
+  .arquivo-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .meta-card{padding:10px}
+  .meta-card-num{font-size:12px}
+
+  /* ===== MISC ===== */
+  .g2{grid-template-columns:1fr!important}
+  .ibox{font-size:11px}
+  .login-box{padding:30px 20px}
+  .login-title{font-size:22px}
 }
+
+/* Telas muito pequenas */
+@media(max-width:380px){
+  .g4{grid-template-columns:repeat(2,1fr)!important}
+  .stat-val{font-size:20px}
+  .ni{padding:4px 7px;min-width:44px}
+}
+
 </style>
 </head>
 <body>
@@ -467,7 +597,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ni" onclick="window.open('erros.html','_blank')"><span class="ni-ico">❌</span><span>Caderno de Erros</span></div>
     </nav>
     <div class="sbfoot">
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.8 — Mai 2026</div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.9 — Mai 2026</div>
       <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
     </div>
   </aside>
