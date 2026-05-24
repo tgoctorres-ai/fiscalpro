@@ -597,7 +597,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ni" onclick="window.open('erros.html','_blank')"><span class="ni-ico">❌</span><span>Caderno de Erros</span></div>
     </nav>
     <div class="sbfoot">
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v3.0 — Mai 2026</div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v3.1 — Mai 2026</div>
       <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
     </div>
   </aside>
@@ -855,7 +855,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div style="display:flex;gap:7px;flex-wrap:wrap">
           <button class="btn btn-o btn-sm" onclick="exportar()">📥 Exportar backup</button>
           <button class="btn btn-o btn-sm" onclick="importar()">📤 Importar backup</button>
-          <button class="btn btn-r btn-sm" onclick="resetar()">🗑 Resetar tudo</button>
+          <button class="btn btn-r btn-sm" onclick="resetar()" title="Apaga sessões, metas e progresso. Mantém seus PDFs, Matérias e Bizus intactos.">🗑 Resetar progresso</button>
         </div>
         <input type="file" id="imp-f" accept=".json" style="display:none" onchange="importarArq(event)">
       </div>
@@ -1131,9 +1131,36 @@ async function saveToFirestore() {
 }
 function scheduleSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToFirestore, 1500); }
 async function resetar() {
-  if (!confirm('Apagar TODOS os dados?')) return;
-  if (!confirm('Tem certeza absoluta?')) return;
-  S = getDefaultState(); initMats(); await saveToFirestore(); P('dash'); showToast('Dados apagados.','ok');
+  if (!confirm('Resetar o progresso?\n\nIsso vai apagar:\n• Sessões de estudo\n• Metas e atividades\n• Questões registradas\n• Histórico do chat\n\nVai MANTER:\n• Suas matérias\n• Seus PDFs cadastrados\n• Seus Bizus gerados\n\nEssa ação não pode ser desfeita.')) return;
+  // Preservar dados importantes
+  const mats = S.mats || [];
+  const pdfs = S.pdfs || [];
+  const bizuPDFs = S.bizuPDFs || [];
+  const apiKey = S.apiKey || localStorage.getItem('fp_apikey') || '';
+  const nome = S.nome || '';
+  const horasDia = S.horasDia || 2;
+  const horasFds = S.horasFds || 2;
+  const matsPerDay = S.matsPerDay || 2;
+  const pph = S.pph || 15;
+  const qtec = S.qtec || 20;
+  const extraMin = S.extraMin || 30;
+  // Resetar estado
+  S = getDefaultState();
+  // Restaurar dados preservados
+  S.mats = mats;
+  S.pdfs = pdfs;
+  S.bizuPDFs = bizuPDFs;
+  S.apiKey = apiKey;
+  S.nome = nome;
+  S.horasDia = horasDia;
+  S.horasFds = horasFds;
+  S.matsPerDay = matsPerDay;
+  S.pph = pph;
+  S.qtec = qtec;
+  S.extraMin = extraMin;
+  await saveToFirestore();
+  P('dash');
+  showToast('✅ Progresso resetado! PDFs, matérias e bizus mantidos.', 'ok');
 }
 auth.onAuthStateChanged(async (user) => {
   if (user) {
