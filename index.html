@@ -385,15 +385,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
   #user-av-bar{display:none}
   #sync-badge{font-size:8px;padding:1px 5px}
 
-  /* ===== SIDEBAR — bottom nav bar ===== */
+  /* ===== SIDEBAR — bottom nav bar fixa ===== */
+  .app-body{padding-bottom:52px} /* espaço para a barra */
   .sb{
     width:100%!important;min-width:unset!important;
-    height:52px;min-height:52px;flex-shrink:0;
+    height:52px;min-height:52px;
     border-right:none;border-top:1px solid var(--bdr);
     flex-direction:row;align-items:center;
-    order:2;overflow-x:auto;overflow-y:hidden;
-    padding:0 4px;gap:0;
-    position:relative;
+    position:fixed;bottom:0;left:0;right:0;z-index:100;
+    padding:0 4px;gap:0;overflow-x:auto;overflow-y:hidden;
   }
   .logo,.user-bar,.sbfoot,.nsec{display:none!important}
   .nav{display:flex;flex-direction:row;align-items:center;padding:0;gap:0;overflow-x:auto;flex:1;
@@ -597,7 +597,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
       <div class="ni" onclick="window.open('erros.html','_blank')"><span class="ni-ico">❌</span><span>Caderno de Erros</span></div>
     </nav>
     <div class="sbfoot">
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v2.9 — Mai 2026</div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-bottom:6px;letter-spacing:.5px">v3.0 — Mai 2026</div>
       <button class="logout-btn" onclick="logout()">↩ Sair da conta</button>
     </div>
   </aside>
