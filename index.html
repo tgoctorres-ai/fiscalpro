@@ -380,8 +380,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="ni" onclick="P('met')" id="nv-met"><span class="ni-ico">📈</span><span>Métricas</span></div>
         <div class="ni" onclick="P('chat')" id="nv-chat"><span class="ni-ico">🤖</span><span>IA Tutora</span></div>
         <div class="nsec">Extras</div>
-        <div class="ni" onclick="window.open('jornada.html','_blank')"><span class="ni-ico">🗓</span><span>Jornada</span></div>
-        <div class="ni" onclick="window.open('erros.html','_blank')"><span class="ni-ico">❌</span><span>Caderno de Erros</span></div>
+        <div class="ni" onclick="abrirPagInterna('jornada.html','🗓 Jornada')"><span class="ni-ico">🗓</span><span>Jornada</span></div>
+        <div class="ni" onclick="abrirPagInterna('erros.html','❌ Caderno de Erros')"><span class="ni-ico">❌</span><span>Caderno de Erros</span></div>
         <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
       </nav>
       <div class="sbfoot">
@@ -1131,6 +1131,28 @@ function importarArq(e){const f=e.target.files[0];if(!f)return;const r=new FileR
 // ══════════════════════════════════════════
 timerReset();
 document.getElementById('dpill').textContent=(()=>{const n=new Date();return `${DS[n.getDay()]}, ${n.getDate()} ${MS[n.getMonth()]} ${n.getFullYear()}`;})();
+
+// ══════════════════════════════════════════
+// PÁGINAS INTERNAS (iframe)
+// ══════════════════════════════════════════
+function abrirPagInterna(url, titulo) {
+  document.getElementById('iframe-pag').src = url;
+  document.getElementById('iframe-titulo').textContent = titulo;
+  document.getElementById('iframe-ov').classList.remove('hidden');
+}
+function fecharPagInterna() {
+  document.getElementById('iframe-ov').classList.add('hidden');
+  document.getElementById('iframe-pag').src = '';
+}
 </script>
+
+<!-- IFRAME OVERLAY para páginas internas -->
+<div id="iframe-ov" class="hidden" style="position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;background:var(--bg)">
+  <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--sur);border-bottom:1px solid var(--bdr);flex-shrink:0">
+    <button onclick="fecharPagInterna()" style="background:var(--sur2);border:1px solid var(--bdr);border-radius:6px;color:var(--muted);padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px">← Voltar ao App</button>
+    <span id="iframe-titulo" style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--txt)"></span>
+  </div>
+  <iframe id="iframe-pag" src="" style="flex:1;border:none;width:100%;height:100%;min-height:0"></iframe>
+</div>
 </body>
 </html>

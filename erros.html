@@ -174,7 +174,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
   <div class="sep"></div>
   <div class="pgt">❌ Caderno de Erros</div>
   <div class="hdr-badge" id="hdr-total">0 questões</div>
-  <a href="index.html" class="back-btn">← Voltar ao app</a>
+  <a href="index.html" class="back-btn" onclick="if(window.parent!==window){event.preventDefault();window.parent.fecharPagInterna();}">← Voltar ao app</a>
 </div>
 
 <div class="layout">
@@ -352,7 +352,7 @@ const COR_MATS = {
 };
 
 auth.onAuthStateChanged(async user => {
-  if (!user) { window.location.href = 'index.html'; return; }
+  if (!user) { if(window.parent!==window){window.parent.fecharPagInterna();}else{window.location.href='index.html';} return; }
   currentUser = user;
   try {
     const snap = await db.collection('usuarios').doc(user.uid).collection('dados').doc('estado').get();
