@@ -203,6 +203,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 /* MODAL */
 .modal{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--radx);padding:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .modal-lg{max-width:640px}
+.modal-bizu{background:#fff;color:#1e293b;border:1px solid #e2e8f0;box-shadow:0 12px 48px rgba(0,0,0,.25)}
+.modal-bizu .mtitle{color:#0f172a}
+.modal-bizu .bizu-content h1,.modal-bizu .bizu-content h2,.modal-bizu .bizu-content h3{color:#1d4ed8}
+.modal-bizu .bizu-content h3{color:#0369a1}
+.modal-bizu .bizu-content strong{color:#b45309}
+.modal-bizu .bizu-content em{color:#c2410c;font-style:italic}
+.modal-bizu .bizu-content li,.modal-bizu .bizu-content p{color:#334155}
 .mtitle{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px}
 .mfoot{display:flex;gap:6px;margin-top:3px}
 /* STATS */
@@ -318,6 +325,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
   .ni{padding:3px 6px;min-width:40px}
   .sc-val{font-size:18px}
 }
+
+/* BIZUS POR MATÉRIA */
+.mat-bizu-card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--radl);margin-bottom:8px;overflow:hidden}
+.mat-bizu-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .15s;user-select:none}
+.mat-bizu-hdr:hover{background:var(--sur2)}
+.mat-bizu-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.mat-bizu-nome{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;flex:1}
+.mat-bizu-meta{font-size:8px;color:var(--muted);flex-shrink:0}
+.mat-bizu-chevron{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.mat-bizu-chevron.open{transform:rotate(180deg)}
+.mat-bizu-body{border-top:1px solid var(--bdr);padding:10px 12px;display:none}
+.mat-bizu-body.open{display:block}
+.mat-bizu-vazio{font-size:10px;color:var(--muted);padding:8px 0;text-align:center}
+.pdf-bizu-item{margin-bottom:7px}
+.pdf-bizu-titulo{display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--sur2);border-radius:var(--rad);border:1px solid var(--bdr);cursor:pointer;margin-bottom:4px;transition:border-color .15s}
+.pdf-bizu-titulo:hover{border-color:var(--gold)}
+.pdf-bizu-titulo-nome{font-size:10px;font-weight:600;flex:1}
+.pdf-bizu-pg{font-size:7px;color:var(--muted)}
+.bloco-row{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:5px;margin-bottom:2px;cursor:pointer;transition:background .1s}
+.bloco-row:hover{background:var(--sur2)}
+.bloco-row.concluido{opacity:.6}
+.bloco-num{font-size:8px;font-weight:700;color:var(--muted);min-width:40px;flex-shrink:0}
+.bloco-titulo{font-size:9px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bloco-pags{font-size:7px;color:var(--muted);flex-shrink:0}
+.bloco-lock{color:var(--dim);font-size:9px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -463,7 +495,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="hdr">
           <div class="hdr-l"><div class="pgt">Matérias & Bizus</div><div class="pgs">A IA lê seu PDF e gera bizus estruturados por sessão de estudo</div></div>
           <div class="hdr-r">
-            <select class="fs" id="bz-filtro" onchange="rBizu()" style="font-size:9px;padding:3px 6px;width:auto"><option value="">Todos os PDFs</option></select>
             <button class="btn btn-g btn-sm" onclick="abrirGeradorBizu()">+ Novo</button>
           </div>
         </div>
@@ -664,10 +695,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 
 <!-- MODAL VER BIZU -->
 <div class="ov hidden" id="mod-bizu-ver">
-  <div class="modal modal-lg">
+  <div class="modal modal-lg modal-bizu">
     <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px">
-      <div style="flex:1"><div style="font-size:7px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">⚡ Bizu</div><div class="mtitle" id="bv-titulo" style="margin-bottom:0"></div></div>
-      <button class="btn btn-gh btn-sm" onclick="fecharMod('mod-bizu-ver')">✕</button>
+      <div style="flex:1"><div style="font-size:7px;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">⚡ Bizu</div><div class="mtitle" id="bv-titulo" style="margin-bottom:0;color:#0f172a"></div></div>
+      <button class="btn btn-gh btn-sm" onclick="fecharMod('mod-bizu-ver')" style="color:#64748b">✕</button>
     </div>
     <div id="bv-meta" style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px"></div>
     <div id="bv-cont" class="bizu-content" style="font-size:11px;line-height:1.8;max-height:52vh;overflow-y:auto"></div>
@@ -995,7 +1026,7 @@ function vincularPDF(id){const pdf=(S.pdfs||[]).find(p=>p.id===id);if(!pdf)retur
 // ══════════════════════════════════════════
 let bzModo='upload',bzPartes=[],bzBlocoAtual=null;
 function bzSetModo(m){bzModo=m;['upload','texto','pronto'].forEach(id=>{document.getElementById('mbtn-'+id)?.classList.toggle('on',m===id);document.getElementById('bz-modo-'+id).style.display=m===id?'block':'none';});document.getElementById('btn-bz-gerar').textContent=m==='pronto'?'💾 Salvar Bizu':'⚡ Gerar Bizus com IA';}
-function abrirGeradorBizu(){bzPartes=[];bzModo='upload';['bz-nm','bz-pi','bz-pf','bz-texto','bz-pronto-titulo','bz-pronto-ass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const pc=document.getElementById('bz-pronto-cont');if(pc)pc.value='';document.getElementById('bz-txt-cnt').textContent='0 caracteres';document.getElementById('bz-drop-txt').textContent='Clique para selecionar o(s) PDF(s)';document.getElementById('bz-drop').style.borderColor='var(--bdr2)';document.getElementById('bz-drop').style.background='var(--sur2)';document.getElementById('bz-files-lst').style.display='none';document.getElementById('bz-file').value='';document.getElementById('bz-prog').style.display='none';document.getElementById('btn-bz-gerar').style.display='block';document.getElementById('bz-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');bzSetModo('upload');document.getElementById('mod-bizu-gen').classList.remove('hidden');document.getElementById('bz-texto').oninput=function(){const n=this.value.length,tok=Math.round(n/4);document.getElementById('bz-txt-cnt').innerHTML=n.toLocaleString()+' chars (~'+tok.toLocaleString()+' tokens) '+(tok>150000?'<strong style="color:var(--red)">⚠️ Muito grande!</strong>':tok>80000?'<span style="color:var(--org)">Grande</span>':'<span style="color:var(--grn)">✓ OK</span>');};}
+function abrirGeradorBizu(preMatId){bzPartes=[];bzModo='upload';['bz-nm','bz-pi','bz-pf','bz-texto','bz-pronto-titulo','bz-pronto-ass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const pc=document.getElementById('bz-pronto-cont');if(pc)pc.value='';document.getElementById('bz-txt-cnt').textContent='0 caracteres';document.getElementById('bz-drop-txt').textContent='Clique para selecionar o(s) PDF(s)';document.getElementById('bz-drop').style.borderColor='var(--bdr2)';document.getElementById('bz-drop').style.background='var(--sur2)';document.getElementById('bz-files-lst').style.display='none';document.getElementById('bz-file').value='';document.getElementById('bz-prog').style.display='none';document.getElementById('btn-bz-gerar').style.display='block';document.getElementById('bz-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');if(preMatId){const sel=document.getElementById('bz-mat');for(let o of sel.options)if(parseInt(o.value)===parseInt(preMatId))o.selected=true;}bzSetModo('upload');document.getElementById('mod-bizu-gen').classList.remove('hidden');document.getElementById('bz-texto').oninput=function(){const n=this.value.length,tok=Math.round(n/4);document.getElementById('bz-txt-cnt').innerHTML=n.toLocaleString()+' chars (~'+tok.toLocaleString()+' tokens) '+(tok>150000?'<strong style="color:var(--red)">⚠️ Muito grande!</strong>':tok>80000?'<span style="color:var(--org)">Grande</span>':'<span style="color:var(--grn)">✓ OK</span>');};}
 function bzCarregarPDF(event){const files=Array.from(event.target.files);if(!files.length)return;bzPartes=[];const lista=document.getElementById('bz-files-lst');lista.style.display='block';lista.innerHTML='<div style="font-size:8px;color:var(--muted)">Carregando...</div>';let carregados=0;const res=new Array(files.length);files.forEach((file,idx)=>{if(file.type!=='application/pdf'){showToast(`${file.name} não é PDF`,'err');return;}const reader=new FileReader();reader.onload=e=>{res[idx]={nome:file.name,bytes:e.target.result.split(',')[1],tamanho:file.size};carregados++;if(carregados===files.length){bzPartes=res.filter(Boolean);if(!document.getElementById('bz-nm').value)document.getElementById('bz-nm').value=bzPartes[0].nome.replace('.pdf','');document.getElementById('bz-drop-txt').textContent=`✅ ${bzPartes.length} arquivo(s) prontos`;document.getElementById('bz-drop').style.borderColor='var(--grn)';document.getElementById('bz-drop').style.background='var(--grndim)';lista.innerHTML=bzPartes.map(p=>`<div style="display:flex;align-items:center;gap:5px;padding:3px 7px;background:var(--sur2);border:1px solid var(--bdr);border-radius:5px;margin-top:3px;font-size:9px"><span>📄</span><span style="flex:1">${p.nome}</span><span style="color:var(--muted)">${(p.tamanho/1024/1024).toFixed(1)}MB</span></div>`).join('');showToast(`${bzPartes.length} arquivo(s) prontos!`,'ok');}};reader.readAsDataURL(file);});}
 async function bzGerarTodos(){
   const lk=localStorage.getItem('fp_apikey');if(lk)S.apiKey=lk;if(!S.apiKey){alert('Configure sua API key em Configurações!');return;}
@@ -1046,21 +1077,36 @@ async function bzGerarTodos(){
   }catch(e){console.error(e);showToast('Erro: '+e.message,'err');}
   document.getElementById('btn-bz-gerar').style.display='block';document.getElementById('bz-prog').style.display='none';
 }
+let bzMatAberta=null;
 function rBizu(){
-  const filt=document.getElementById('bz-filtro');const pdfs=S.bizuPDFs||[];
-  filt.innerHTML='<option value="">Todos</option>'+pdfs.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
-  const fp=filt.value;const lista=fp?pdfs.filter(p=>String(p.id)===fp):pdfs;const el=document.getElementById('bz-lst');
-  if(!lista.length){el.innerHTML='<div class="empty"><div style="font-size:24px;margin-bottom:7px">⚡</div><div class="et">Nenhum PDF com bizus.<br>Clique em "+ Novo" para começar!</div></div>';return;}
-  el.innerHTML=lista.map(pdf=>{
-    const mat=(S.mats||[]).find(m=>m.id===pdf.matId);const conc=pdf.blocos.filter(b=>b.concluido).length;const tot=pdf.blocos.length;const pct=Math.round(conc/tot*100);
-    const bHtml=pdf.blocos.map((b,i)=>{
-      const lib=i<=pdf.blocoAtual;const concl=b.concluido;
-      if(!lib)return `<div style="display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:var(--rad);background:var(--sur2);border:1px solid var(--bdr);opacity:.35;margin-bottom:3px"><div>🔒</div><div><div style="font-size:9px;font-weight:600;color:var(--dim)">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div><div style="font-size:7px;color:var(--dim)">Conclua a meta anterior</div></div></div>`;
-      return `<div style="display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:var(--rad);background:${concl?'var(--grndim)':'var(--gglow)'};border:1px solid ${concl?'rgba(34,197,94,.3)':'rgba(245,166,35,.3)'};margin-bottom:3px;cursor:pointer" onclick="bzVer('${pdf.id}',${i})"><div>${concl?'✅':'📖'}</div><div style="flex:1"><div style="font-size:9px;font-weight:700;color:${concl?'var(--grn)':'var(--gold)'}">Meta ${i+1} — pág. ${b.pgIni}–${b.pgFim}</div><div style="font-size:8px;color:var(--muted)">${b.titulo}</div><div style="font-size:7px;color:var(--dim);margin-top:1px">${(b.assuntos||[]).slice(0,3).join(' • ')}</div></div><div style="font-size:8px;color:${concl?'var(--grn)':'var(--gold)'};font-weight:700">Ver →</div></div>`;
+  const el=document.getElementById('bz-lst');
+  const pdfs=S.bizuPDFs||[];
+  if(!pdfs.length){el.innerHTML='<div class="empty"><div style="font-size:28px;margin-bottom:8px">⚡</div><div class="et">Nenhum Bizu ainda.<br>Clique em <strong>+ Novo</strong> para começar!</div></div>';return;}
+  const mats=S.mats||[];
+  const porMat={};
+  pdfs.forEach(pdf=>{
+    const k=pdf.matId;
+    if(!porMat[k])porMat[k]={mat:mats.find(m=>m.id===k)||{id:k,nome:'Sem matéria',cor:'#64748b'},pdfs:[]};
+    porMat[k].pdfs.push(pdf);
+  });
+  el.innerHTML=Object.values(porMat).map(({mat,pdfs:pdfsMat})=>{
+    const totalBlocos=pdfsMat.reduce((s,p)=>s+p.blocos.length,0);
+    const concBlocos=pdfsMat.reduce((s,p)=>s+p.blocos.filter(b=>b.concluido).length,0);
+    const pctMat=totalBlocos>0?Math.round(concBlocos/totalBlocos*100):0;
+    const isOpen=bzMatAberta===mat.id;
+    const pdfsHtml=pdfsMat.map(pdf=>{
+      const conc=pdf.blocos.filter(b=>b.concluido).length;const tot=pdf.blocos.length;const pct=Math.round(conc/tot*100);
+      const blocosHtml=pdf.blocos.map((b,i)=>{
+        const lib=i<=pdf.blocoAtual;const concl=b.concluido;
+        const ic=!lib?'🔒':concl?'✅':'📖';
+        return `<div class="bloco-row${concl?' concluido':''}" onclick="${lib?`bzVer('${pdf.id}',${i})`:'void(0)'}" style="${!lib?'cursor:default;opacity:.4':''}"><span class="bloco-num">Meta ${i+1}</span><span class="bloco-titulo" title="${b.titulo}">${ic} ${b.titulo}</span><span class="bloco-pags">p.${b.pgIni}–${b.pgFim}</span><span style="font-size:8px;color:${!lib?'var(--dim)':concl?'var(--grn)':'var(--gold)';}">${!lib?'':'Ver →'}</span></div>`;
+      }).join('');
+      return `<div class="pdf-bizu-item"><div class="pdf-bizu-titulo"><div class="pdf-bizu-titulo-nome">📄 ${pdf.nome}</div><div class="pdf-bizu-pg">${conc}/${tot} • ${pct}%</div><div style="display:flex;gap:3px;margin-left:7px"><button class="btn btn-b btn-xs" onclick="event.stopPropagation();bzRefazer('${pdf.id}')" title="Refazer">↺</button><button class="btn btn-p btn-xs" onclick="event.stopPropagation();bzAddBloco('${pdf.id}')">+</button><button class="btn btn-r btn-xs" onclick="event.stopPropagation();bzDel('${pdf.id}')">🗑</button></div></div><div style="margin-left:8px">${blocosHtml}</div><div style="display:flex;align-items:center;gap:6px;padding:3px 9px 6px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div><span style="font-size:7px;color:var(--grn)">${pct}%</span></div></div>`;
     }).join('');
-    return `<div class="card mb"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:7px"><div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:2px">${pdf.nome}</div><div style="font-size:8px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap">${mat?`<span style="color:${mat.cor}">● ${mat.nome}</span>`:''}<span>${tot} metas</span><span>${conc}/${tot} concluídas</span></div><div style="display:flex;align-items:center;gap:6px;margin-top:5px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pct}%"></div></div><span style="font-size:8px;color:var(--grn)">${pct}%</span></div></div><div style="display:flex;gap:3px;flex-shrink:0"><button class="btn btn-b btn-xs" onclick="bzRefazer('${pdf.id}')" title="Refazer bizus">↺</button><button class="btn btn-p btn-xs" onclick="bzAddBloco('${pdf.id}')">+ Bloco</button><button class="btn btn-r btn-xs" onclick="bzDel('${pdf.id}')">🗑</button></div></div>${bHtml}</div>`;
+    return `<div class="mat-bizu-card"><div class="mat-bizu-hdr" onclick="bzToggleMat(${mat.id})"><div class="mat-bizu-dot" style="background:${mat.cor}"></div><div class="mat-bizu-nome">${mat.nome}</div><div style="display:flex;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:5px"><div class="pbar" style="width:60px"><div class="pfill n" style="width:${pctMat}%"></div></div><span style="font-size:8px;color:var(--grn);font-weight:700">${pctMat}%</span></div><span class="mat-bizu-meta">${pdfsMat.length} PDF${pdfsMat.length>1?'s':''} • ${concBlocos}/${totalBlocos} metas</span><span class="mat-bizu-chevron${isOpen?' open':''}">∨</span></div></div><div class="mat-bizu-body${isOpen?' open':''}"><div style="padding:4px 0 7px">${pdfsHtml}</div><button class="btn btn-g btn-xs" onclick="abrirGeradorBizu(${mat.id})" style="margin-top:2px;width:100%">+ Novo Bizu para ${mat.nome}</button></div></div>`;
   }).join('');
 }
+function bzToggleMat(matId){bzMatAberta=bzMatAberta===matId?null:matId;rBizu();}
 function bzVer(pdfId,blocoIdx){const pdf=(S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));if(!pdf)return;const bloco=pdf.blocos[blocoIdx];if(!bloco)return;bzBlocoAtual={pdfId:pdf.id,blocoIdx};const mat=(S.mats||[]).find(m=>m.id===pdf.matId);document.getElementById('bv-titulo').textContent=bloco.titulo;document.getElementById('bv-meta').innerHTML=`${mat?`<span class="badge bp" style="color:${mat.cor}">📚 ${mat.nome}</span>`:''}  <span class="badge bp">📄 ${pdf.nome}</span><span class="badge bp">📖 pág. ${bloco.pgIni}–${bloco.pgFim}</span><span class="badge bp">Meta ${blocoIdx+1}/${pdf.blocos.length}</span>${bloco.concluido?'<span class="badge ba">✅ Concluída</span>':'<span class="badge" style="background:var(--gglow);color:var(--gold);border:1px solid rgba(245,166,35,.3)">📖 Em estudo</span>'}`;document.getElementById('bv-cont').innerHTML=formatarBizu(bloco.bizu||'');const btn=document.getElementById('bv-btn-conc');if(bloco.concluido){btn.style.display='none';}else{btn.style.display='block';btn.textContent=blocoIdx<pdf.blocos.length-1?'✅ Estudado → liberar próximo':'✅ Estudado → PDF concluído!';}document.getElementById('mod-bizu-ver').classList.remove('hidden');}
 function bzConcluirBloco(){if(!bzBlocoAtual)return;const{pdfId,blocoIdx}=bzBlocoAtual;const pdf=(S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));if(!pdf)return;pdf.blocos[blocoIdx].concluido=true;pdf.blocos[blocoIdx].concluidoEm=new Date().toISOString();if(blocoIdx+1<pdf.blocos.length){pdf.blocoAtual=blocoIdx+1;showToast(`🎉 Meta ${blocoIdx+1} concluída!`,'ok');}else showToast('🏆 Todos os bizus concluídos!','ok');save();fecharMod('mod-bizu-ver');rBizu();}
 function bzCopiar(){if(!bzBlocoAtual)return;const{pdfId,blocoIdx}=bzBlocoAtual;const pdf=(S.bizuPDFs||[]).find(p=>String(p.id)===String(pdfId));if(!pdf)return;const b=pdf.blocos[blocoIdx];navigator.clipboard.writeText(b.titulo+'\n\n'+(b.bizu||'')).then(()=>showToast('Copiado!','ok'));}
