@@ -227,6 +227,10 @@ function motorGerarMeta(S, metaNum) {
   const atividades = [];
   let idx = 1;
 
+  // Simula o avanço de páginas por matéria durante a geração do plano,
+  // para que cada sessão de teoria exiba o intervalo correto de páginas.
+  const simPgAtual = {};
+
   slots.forEach((slot, diaIdx) => {
     slot.forEach(matId => {
       const mat = mats.find(m => m.id === matId);
@@ -237,10 +241,18 @@ function motorGerarMeta(S, metaNum) {
       if (!S.estadoMat[matId]) S.estadoMat[matId] = motorEstadoMateria(mat);
 
       const est = S.estadoMat[matId];
-      const ativ = motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx);
+
+      // Inicializar o simulador com o progresso real atual da matéria
+      if (simPgAtual[matId] === undefined) simPgAtual[matId] = est.pgAtual || 0;
+
+      const ativ = motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, simPgAtual[matId]);
       if (ativ) {
         atividades.push(ativ);
         idx++;
+        // Avançar página simulada apenas para sessões de teoria
+        if (ativ.tipo === 'Teoria' && ativ.pgFim !== null) {
+          simPgAtual[matId] = ativ.pgFim;
+        }
       }
     });
   });
@@ -303,7 +315,7 @@ function motorGerarSlotsSemana(mats, diasSemana) {
 /**
  * Gera uma atividade para a matéria baseado na fase atual
  */
-function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx) {
+function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimulado) {
   const hoje = motorHoje();
   const codigo = motorGerarCodigo(mat, metaNum, idx);
 
@@ -343,8 +355,9 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx) {
     }
   }
 
-  // Calcular páginas desta sessão
-  const pgIni = (est.pgAtual || 0) + 1;
+  // Calcular páginas desta sessão (usa pgSimulado durante geração do plano)
+  const pgBase = (pgSimulado !== undefined) ? pgSimulado : (est.pgAtual || 0);
+  const pgIni = pgBase + 1;
   const pgFim = Math.min(est.pgTotal, pgIni + pgSessao - 1);
 
   switch (est.fase) {

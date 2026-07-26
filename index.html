@@ -367,7 +367,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <div id="login-err" class="hidden" style="margin-top:10px;font-size:10px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 10px;line-height:1.5"></div>
     <button id="login-redirect-btn" class="hidden" onclick="loginRedirect()" style="width:100%;margin-top:6px;padding:9px;background:transparent;border:1px solid var(--bdr);border-radius:8px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">↗ Tentar via redirecionamento</button>
     <div class="login-footer" style="margin-top:12px">Dados salvos com segurança no Firestore.<br>Cada usuário acessa apenas seus próprios estudos.</div>
-    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.2 — Mai 2026</div>
+    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.3 — Jul 2026</div>
   </div>
   <div id="login-loading" class="login-loading hidden"><div class="spin"></div><span id="loading-txt">Carregando...</span></div>
 </div>
@@ -421,7 +421,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
       </nav>
       <div class="sbfoot">
-        <div class="sbver">v4.2 — Mai 2026</div>
+        <div class="sbver">v4.3 — Jul 2026</div>
         <button class="logout-btn" onclick="logout()">↩ Sair</button>
       </div>
     </aside>
@@ -964,6 +964,7 @@ function abrirModalFin(){
   document.getElementById('fin-tipo').textContent=a.tipo+' — '+a.matNome;
   let html='';
   if(td2.finalizacao==='questoes'){html+=`<div class="fin-field"><label>Questões respondidas</label><input type="number" id="fin-qtot" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;html+=`<div class="fin-field"><label>Questões acertadas</label><input type="number" id="fin-qac" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;}
+  if(a.tipo==='Videoaula'){html+=`<div class="fin-field" style="grid-column:1/-1"><label>Vídeo assistido</label><input type="text" class="fi" id="fin-video" placeholder="Ex: Aula 3 — Porcentagem" style="width:100%;box-sizing:border-box"></div>`;}
   html+=`<div class="fin-field"><label>Horas</label><input type="number" id="fin-hr" min="0" max="12" placeholder="0" value="0"></div>`;
   html+=`<div class="fin-field"><label>Minutos</label><input type="number" id="fin-min" min="0" max="59" placeholder="0" value="${Math.round(timerSecs/60)}"></div>`;
   document.getElementById('fin-campos').innerHTML=html;
@@ -982,8 +983,10 @@ function confirmarFin(){
   const hr=parseFloat(document.getElementById('fin-hr')?.value)||0;const min=parseInt(document.getElementById('fin-min')?.value)||0;
   const qtot=td2.finalizacao==='questoes'?parseInt(document.getElementById('fin-qtot')?.value)||0:null;
   const qac=td2.finalizacao==='questoes'?parseInt(document.getElementById('fin-qac')?.value)||0:null;
+  const videoNome=a.tipo==='Videoaula'?(document.getElementById('fin-video')?.value.trim()||''):null;
   const res=Motor.finalizarAtividade(S,a,{horas:hr,minutos:min,questoesTotais:qtot,questoesAcertos:qac});
   S=res.S;a.status='concluida';a.tempo=hr+min/60;
+  if(videoNome!==null){a.videoNome=videoNome;const est=S.estadoMat?.[a.matId];if(est)est.ultimoVideo=videoNome;}
   if(qtot!==null){a.questoesTotais=qtot;a.questoesAcertos=qac;a.desemp=res.pct;if(!S.qs)S.qs=[];if(qtot>0)S.qs.push({id:Date.now(),matId:a.matId,matNm:a.matNome,tot:qtot,ac:qac,pct:res.pct,tipo:a.tipo,data:td(),meta:paMetaNum});}
   const conc=meta.atividades.filter(x=>x.status==='concluida').length;
   if(conc>=meta.atividades.length){
