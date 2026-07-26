@@ -367,7 +367,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <div id="login-err" class="hidden" style="margin-top:10px;font-size:10px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 10px;line-height:1.5"></div>
     <button id="login-redirect-btn" class="hidden" onclick="loginRedirect()" style="width:100%;margin-top:6px;padding:9px;background:transparent;border:1px solid var(--bdr);border-radius:8px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">↗ Tentar via redirecionamento</button>
     <div class="login-footer" style="margin-top:12px">Dados salvos com segurança no Firestore.<br>Cada usuário acessa apenas seus próprios estudos.</div>
-    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.3 — Jul 2026</div>
+    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.4 — Jul 2026</div>
   </div>
   <div id="login-loading" class="login-loading hidden"><div class="spin"></div><span id="loading-txt">Carregando...</span></div>
 </div>
@@ -421,7 +421,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
       </nav>
       <div class="sbfoot">
-        <div class="sbver">v4.3 — Jul 2026</div>
+        <div class="sbver">v4.4 — Jul 2026</div>
         <button class="logout-btn" onclick="logout()">↩ Sair</button>
       </div>
     </aside>
@@ -931,6 +931,7 @@ function abrirPopup(metaNum,idx){
   html+=psecao('📚 Material','mat',matH,false);
   html+=psecao('⚙️ Comandos','cmd',buildComandos(a),true);
   if(bizu)html+=psecao('⚡ Bizu','bizu',`<div class="bizu-content">${formatarBizu(bizu.bizu||'')}</div>`,false);
+  if(conc&&a.tipo==='Videoaula'&&a.videoNome){html+=psecao('📌 Notas de encerramento','enc',`<p><strong>Vídeo assistido:</strong> ${a.videoNome}</p>`,true);}
   document.getElementById('pa-body').innerHTML=html;
   document.getElementById('popup-ov').classList.remove('hidden');
 }
@@ -943,7 +944,7 @@ function buildComandos(a){
   if(a.pgIni){txt+=`<p style="margin-top:7px"><span style="color:var(--org);font-weight:700">1) ${a.tipo.toUpperCase()}</span> — estude da pág. ${a.pgIni} até a pág. ${a.pgFim} do PDF: <em>${a.pdfNome||a.matNome}</em>.</p>`;txt+=`<p style="margin-top:5px"><span style="color:var(--org);font-weight:700">2) Atenção:</span> Fique atento aos pontos mais cobrados nas provas fiscais.</p>`;}
   else if(a.tipo.includes('Questões')||a.tipo.includes('Teste')){txt+=`<p style="margin-top:7px"><span style="color:var(--org);font-weight:700">1) QUESTÕES</span> — resolva ${S.qtecMeta||20} questões no TEC Concursos.</p>`;txt+=`<p style="margin-top:5px"><span style="color:var(--org);font-weight:700">2)</span> Registre o resultado ao finalizar. Abaixo de 70% = reforço sugerido.</p>`;}
   else if(a.tipo.includes('Revisão')){txt+=`<p style="margin-top:7px"><span style="color:var(--org);font-weight:700">1) REVISÃO</span> — releia os Bizus desta matéria.</p>`;txt+=`<p style="margin-top:5px"><span style="color:var(--org);font-weight:700">2)</span> Revise o Caderno de Erros para esta matéria.</p>`;}
-  else if(a.tipo==='Videoaula'){txt+=`<p style="margin-top:7px"><span style="color:var(--org);font-weight:700">1) VIDEOAULA</span> — assista no ${a.pdfNome||'Escola de Exatas'}.</p>`;}
+  else if(a.tipo==='Videoaula'){txt+=`<p style="margin-top:7px"><span style="color:var(--org);font-weight:700">1) VIDEOAULA</span> — assista no ${a.pdfNome||'Escola de Exatas'}.</p>`;const ultimoVid=S.estadoMat?.[a.matId]?.ultimoVideo;if(ultimoVid)txt+=`<p style="margin-top:6px;padding:6px 8px;background:rgba(245,158,11,.1);border-left:3px solid var(--org);border-radius:3px"><span style="color:var(--org);font-weight:700">↩ Último vídeo assistido:</span> ${ultimoVid}</p>`;}
   else if(a.tipo.includes('Reforço')){txt+=`<p style="margin-top:7px"><span style="color:var(--red);font-weight:700">⚠️ REFORÇO ${a.grauReforco?.toUpperCase()||''}</span></p><p style="margin-top:5px">${a.sub}</p>`;}
   return txt;
 }
