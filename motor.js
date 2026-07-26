@@ -357,8 +357,9 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
 
   // Calcular páginas desta sessão (usa pgSimulado durante geração do plano)
   const pgBase = (pgSimulado !== undefined) ? pgSimulado : (est.pgAtual || 0);
-  const pgIni = pgBase + 1;
-  const pgFim = Math.min(est.pgTotal, pgIni + pgSessao - 1);
+  const pgOffset = est.pgOffset || 0; // deslocamento para PDFs que não começam na pág. 1
+  const pgIni = pgBase + 1 + pgOffset;
+  const pgFim = Math.min(est.pgTotal + pgOffset, pgIni + pgSessao - 1);
 
   switch (est.fase) {
     case FASES.TEORIA:
