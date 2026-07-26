@@ -324,21 +324,48 @@ function motorGerarSlotsSemana(mats, diasSemana) {
  */
 function motorPgRealRange(blocosTeo, pgBase, pgSessao) {
   let flat = 0;
+  let remaining = pgSessao;
+  let started = false;
+  let firstPgIni = null;
+  let lastPgFim = null;
+  let totalTaken = 0;
+  const partes = [];
+
   for (const bloco of blocosTeo) {
     const size = bloco.fim - bloco.ini + 1;
-    if (pgBase < flat + size) {
-      const offsetInBlock = pgBase - flat;
-      const leftInBlock = size - offsetInBlock;
-      const take = Math.min(pgSessao, leftInBlock);
-      return {
-        pgIni: bloco.ini + offsetInBlock,
-        pgFim: bloco.ini + offsetInBlock + take - 1,
-        paginasNaSessao: take
-      };
+    if (!started) {
+      if (pgBase < flat + size) {
+        const offsetInBlock = pgBase - flat;
+        const leftInBlock = size - offsetInBlock;
+        const take = Math.min(remaining, leftInBlock);
+        const pgIni = bloco.ini + offsetInBlock;
+        const pgFim = pgIni + take - 1;
+        partes.push(`Pág. ${pgIni} a ${pgFim}`);
+        firstPgIni = pgIni; lastPgFim = pgFim;
+        totalTaken += take; remaining -= take;
+        started = true;
+        if (remaining <= 0) break;
+      }
+    } else {
+      // Continua para o próximo bloco com o restante da sessão
+      const take = Math.min(remaining, size);
+      const pgIni = bloco.ini;
+      const pgFim = pgIni + take - 1;
+      partes.push(`Pág. ${pgIni} a ${pgFim}`);
+      lastPgFim = pgFim;
+      totalTaken += take; remaining -= take;
+      if (remaining <= 0) break;
     }
     flat += size;
   }
-  return null;
+
+  if (totalTaken === 0) return null;
+  return {
+    pgIni: firstPgIni,
+    pgFim: lastPgFim,
+    paginasNaSessao: totalTaken,
+    label: partes.join(' + ')
+  };
 }
 
 function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimulado) {
@@ -383,12 +410,12 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
 
   // Calcular páginas desta sessão (usa pgSimulado durante geração do plano)
   const pgBase = (pgSimulado !== undefined) ? pgSimulado : (est.pgAtual || 0);
-  let pgIni, pgFim, paginasNaSessao;
+  let pgIni, pgFim, paginasNaSessao, pgLabel = null;
   if (est.blocosTeo && est.blocosTeo.length) {
     // PDF com múltiplos blocos de teoria (ex: teoria intercalada com questões)
     const range = motorPgRealRange(est.blocosTeo, pgBase, pgSessao);
     if (!range) return null; // teoria já concluída em todos os blocos
-    pgIni = range.pgIni; pgFim = range.pgFim; paginasNaSessao = range.paginasNaSessao;
+    pgIni = range.pgIni; pgFim = range.pgFim; paginasNaSessao = range.paginasNaSessao; pgLabel = range.label;
   } else {
     // PDF de bloco único (com offset para PDFs que não começam na pág. 1)
     const pgOffset = est.pgOffset || 0;
@@ -401,7 +428,7 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
     case FASES.TEORIA:
       return motorAtividade(mat, 'Teoria',
         `${est.pdfNome || mat.nome}`,
-        `Pág. ${pgIni} a ${pgFim}`,
+        pgLabel || `Pág. ${pgIni} a ${pgFim}`,
         idx, codigo, est.pdfNome,
         { pgIni, pgFim, paginasNaSessao, diaIdx });
 
