@@ -249,9 +249,9 @@ function motorGerarMeta(S, metaNum) {
       if (ativ) {
         atividades.push(ativ);
         idx++;
-        // Avançar página simulada apenas para sessões de teoria
-        if (ativ.tipo === 'Teoria' && ativ.pgFim !== null) {
-          simPgAtual[matId] = ativ.pgFim;
+        // Avançar contagem simulada apenas para sessões de teoria
+        if (ativ.tipo === 'Teoria' && ativ.paginasNaSessao) {
+          simPgAtual[matId] = (simPgAtual[matId] || 0) + ativ.paginasNaSessao;
         }
       }
     });
@@ -315,6 +315,32 @@ function motorGerarSlotsSemana(mats, diasSemana) {
 /**
  * Gera uma atividade para a matéria baseado na fase atual
  */
+/**
+ * Converte posição flat (contagem) para intervalo real de páginas usando múltiplos blocos.
+ * @param {Array} blocosTeo [{ini, fim}] blocos de teoria do PDF
+ * @param {number} pgBase páginas já lidas (contagem 0-base)
+ * @param {number} pgSessao páginas a ler nesta sessão
+ * @returns {{ pgIni, pgFim, paginasNaSessao }} ou null se já completou tudo
+ */
+function motorPgRealRange(blocosTeo, pgBase, pgSessao) {
+  let flat = 0;
+  for (const bloco of blocosTeo) {
+    const size = bloco.fim - bloco.ini + 1;
+    if (pgBase < flat + size) {
+      const offsetInBlock = pgBase - flat;
+      const leftInBlock = size - offsetInBlock;
+      const take = Math.min(pgSessao, leftInBlock);
+      return {
+        pgIni: bloco.ini + offsetInBlock,
+        pgFim: bloco.ini + offsetInBlock + take - 1,
+        paginasNaSessao: take
+      };
+    }
+    flat += size;
+  }
+  return null;
+}
+
 function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimulado) {
   const hoje = motorHoje();
   const codigo = motorGerarCodigo(mat, metaNum, idx);
@@ -357,9 +383,19 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
 
   // Calcular páginas desta sessão (usa pgSimulado durante geração do plano)
   const pgBase = (pgSimulado !== undefined) ? pgSimulado : (est.pgAtual || 0);
-  const pgOffset = est.pgOffset || 0; // deslocamento para PDFs que não começam na pág. 1
-  const pgIni = pgBase + 1 + pgOffset;
-  const pgFim = Math.min(est.pgTotal + pgOffset, pgIni + pgSessao - 1);
+  let pgIni, pgFim, paginasNaSessao;
+  if (est.blocosTeo && est.blocosTeo.length) {
+    // PDF com múltiplos blocos de teoria (ex: teoria intercalada com questões)
+    const range = motorPgRealRange(est.blocosTeo, pgBase, pgSessao);
+    if (!range) return null; // teoria já concluída em todos os blocos
+    pgIni = range.pgIni; pgFim = range.pgFim; paginasNaSessao = range.paginasNaSessao;
+  } else {
+    // PDF de bloco único (com offset para PDFs que não começam na pág. 1)
+    const pgOffset = est.pgOffset || 0;
+    paginasNaSessao = Math.min(pgSessao, est.pgTotal - pgBase);
+    pgIni = pgBase + 1 + pgOffset;
+    pgFim = pgIni + paginasNaSessao - 1;
+  }
 
   switch (est.fase) {
     case FASES.TEORIA:
@@ -367,7 +403,7 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
         `${est.pdfNome || mat.nome}`,
         `Pág. ${pgIni} a ${pgFim}`,
         idx, codigo, est.pdfNome,
-        { pgIni, pgFim, diaIdx });
+        { pgIni, pgFim, paginasNaSessao, diaIdx });
 
     case FASES.MAPEAMENTO:
       return motorAtividade(mat, 'Mapeamento',
@@ -472,6 +508,7 @@ function motorAtividade(mat, tipo, titulo, sub, idx, codigo, pdfNome, extras) {
     cor: tipoDef.cor,
     pgIni: extras?.pgIni || null,
     pgFim: extras?.pgFim || null,
+    paginasNaSessao: extras?.paginasNaSessao || null,
     diaIdx: extras?.diaIdx || 0,
     grauReforco: extras?.grauReforco || null,
     semPDF: extras?.semPDF || false,
@@ -539,8 +576,9 @@ function motorFinalizarAtividade(S, ativ, registro) {
 
   switch (ativ.tipo) {
     case 'Teoria': {
-      // Avançar páginas
-      const novasPags = est.pgAtual + pgSessao;
+      // Avançar páginas (respeita blocos: usa paginasNaSessao da atividade se disponível)
+      const avanco = ativ.paginasNaSessao || pgSessao;
+      const novasPags = est.pgAtual + avanco;
       est.pgAtual = Math.min(est.pgTotal, novasPags);
       est.sessoesTeo = (est.sessoesTeo || 0) + 1;
 
@@ -862,6 +900,7 @@ window.Motor = {
   estadoMateria:         motorEstadoMateria,
   gerarMeta:             motorGerarMeta,
   finalizarAtividade:    motorFinalizarAtividade,
+  pgRealRange:           motorPgRealRange,
   avancarPDF:            motorAvancarPDF,
   ajustarManutencao:     motorAjustarManutencao,
   metricas:              motorMetricas,
