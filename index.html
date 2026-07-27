@@ -367,7 +367,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <div id="login-err" class="hidden" style="margin-top:10px;font-size:10px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 10px;line-height:1.5"></div>
     <button id="login-redirect-btn" class="hidden" onclick="loginRedirect()" style="width:100%;margin-top:6px;padding:9px;background:transparent;border:1px solid var(--bdr);border-radius:8px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">↗ Tentar via redirecionamento</button>
     <div class="login-footer" style="margin-top:12px">Dados salvos com segurança no Firestore.<br>Cada usuário acessa apenas seus próprios estudos.</div>
-    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.7 — Jul 2026</div>
+    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.8 — Jul 2026</div>
   </div>
   <div id="login-loading" class="login-loading hidden"><div class="spin"></div><span id="loading-txt">Carregando...</span></div>
 </div>
@@ -421,7 +421,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
       </nav>
       <div class="sbfoot">
-        <div class="sbver">v4.7 — Jul 2026</div>
+        <div class="sbver">v4.8 — Jul 2026</div>
         <button class="logout-btn" onclick="logout()">↩ Sair</button>
       </div>
     </aside>
@@ -1071,14 +1071,68 @@ function getBlocosTeo(){const c=document.getElementById('pdf-blocos-teo');return
 // ══════════════════════════════════════════
 let editPDFId=null;
 function rPDFs(){
-  const el=document.getElementById('pdf-lst');const pdfs=S.pdfs||[];
-  if(!pdfs.length){el.innerHTML='<div class="empty"><div class="et">Nenhum PDF cadastrado.</div></div>';return;}
-  el.innerHTML=pdfs.map(pdf=>{
-    const mat=(S.mats||[]).find(m=>m.id===pdf.matId);const est=S.estadoMat?.[pdf.matId];const isAtivo=est?.pdfAtual===pdf.id;
-    const pg=est&&isAtivo?Math.min(100,Math.round(((est.pgAtual||0)/Math.max(1,pdf.pgTeoria||pdf.pgTot||1))*100)):0;
-    return `<div class="card mb"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:9px"><div style="flex:1;min-width:0"><div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:2px">${pdf.nome}${isAtivo?' <span style="font-size:8px;color:var(--grn)">● Em curso</span>':''}</div><div style="font-size:9px;color:${mat?.cor||'var(--muted)'};margin-bottom:5px">${mat?.nome||'—'} • ${pdf.pgTot||0} págs total • ${pdf.pgTeoria||0} págs teoria</div>${isAtivo?`<div style="display:flex;align-items:center;gap:5px"><div class="pbar" style="flex:1"><div class="pfill n" style="width:${pg}%"></div></div><span style="font-size:8px;color:var(--grn)">${pg}%</span></div>`:''}</div><div style="display:flex;gap:3px;flex-shrink:0"><button class="btn btn-b btn-xs" onclick="vincularPDF(${pdf.id})" title="Usar como PDF atual desta matéria">▶ Usar</button><button class="btn btn-gh btn-sm" onclick="editarPDF(${pdf.id})">✏️</button><button class="btn btn-r btn-xs" onclick="delPDF(${pdf.id})">🗑</button></div></div>${pdf.obs?`<div style="font-size:9px;color:var(--muted);margin-top:5px;padding-top:5px;border-top:1px solid var(--bdr)">${pdf.obs}</div>`:''}</div>`;
+  const el=document.getElementById('pdf-lst');
+  const pdfs=S.pdfs||[];
+  const mats=S.mats||[];
+  if(!pdfs.length){el.innerHTML='<div class="empty"><div class="et">Nenhum material cadastrado.</div><div class="es">Clique em + Novo PDF para começar.</div></div>';return;}
+
+  // Agrupar por matéria
+  const byMat={};
+  pdfs.forEach(p=>{const mid=p.matId||'sem';if(!byMat[mid])byMat[mid]=[];byMat[mid].push(p);});
+
+  // Ordenar pela ordem das matérias cadastradas
+  const matIds=mats.map(m=>m.id);
+  const grpKeys=Object.keys(byMat).sort((a,b)=>matIds.indexOf(parseInt(a))-matIds.indexOf(parseInt(b)));
+
+  if(!window._pdfGrp)window._pdfGrp={};
+
+  el.innerHTML=grpKeys.map(mid=>{
+    const mat=mats.find(m=>m.id===parseInt(mid));
+    const est=S.estadoMat?.[parseInt(mid)];
+    const grpPdfs=byMat[mid];
+    const ativoId=est?.pdfAtual;
+    const ativo=grpPdfs.find(p=>p.id===ativoId);
+    const cor=mat?.cor||'#666';
+    const nome=mat?.nome||'Sem matéria';
+    const aberto=window._pdfGrp[mid]!==false;
+
+    const chevron=`<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="transition:transform .2s;transform:rotate(${aberto?90:0}deg);flex-shrink:0"><path d="M3 2l4 3-4 3" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+    const hdr=`<div onclick="togglePdfGrp('${mid}')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-left:3px solid ${cor};background:var(--s2);user-select:none;${aberto?'border-radius:6px 6px 0 0':'border-radius:6px;margin-bottom:8px'}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--fg);margin-bottom:2px">${nome}</div>
+        <div style="font-size:10px;color:var(--muted)">${grpPdfs.length} ${grpPdfs.length===1?'material':'materiais'}${ativo?` &nbsp;·&nbsp; <span style="color:var(--grn)">● ${ativo.nome}</span>`:''}</div>
+      </div>
+      ${chevron}
+    </div>`;
+
+    const rows=!aberto?'':grpPdfs.map((pdf,i)=>{
+      const isAtivo=pdf.id===ativoId;
+      const pg=isAtivo&&est?Math.min(100,Math.round(((est.pgAtual||0)/Math.max(1,pdf.pgTeoria||pdf.pgTot||1))*100)):0;
+      const tipoIco=pdf.tipo==='videoaula'?'📹':'📄';
+      const ultimo=i===grpPdfs.length-1;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px 9px 17px;background:var(--s1);border-left:2px solid ${isAtivo?'var(--grn)':'transparent'};${ultimo?'border-radius:0 0 6px 6px':''};${!ultimo?'border-bottom:1px solid var(--bdr)':''}">
+        <span style="font-size:13px;flex-shrink:0">${tipoIco}</span>
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:600;color:${isAtivo?'var(--fg)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pdf.nome}</span>
+            ${isAtivo?'<span style="font-size:8px;color:var(--grn);flex-shrink:0;letter-spacing:.3px">● ATIVO</span>':''}
+          </div>
+          ${pdf.pgTot?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${pdf.pgTeoria||0} págs teoria · ${pdf.pgTot} págs total${pdf.obs?` · ${pdf.obs}`:''}</div>`:(pdf.obs?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${pdf.obs}</div>`:'')}
+          ${isAtivo?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px"><div class="pbar" style="flex:1;height:2px"><div class="pfill n" style="width:${pg}%"></div></div><span style="font-size:9px;color:var(--grn)">${pg}%</span></div>`:''}
+        </div>
+        <div style="display:flex;gap:3px;flex-shrink:0">
+          <button class="btn btn-b btn-xs" onclick="vincularPDF(${pdf.id})" title="Usar este material">▶ Usar</button>
+          <button class="btn btn-gh btn-xs" onclick="editarPDF(${pdf.id})" title="Editar">✏️</button>
+          <button class="btn btn-r btn-xs" onclick="delPDF(${pdf.id})" title="Excluir">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:8px;border-radius:6px;${aberto?'border:1px solid var(--bdr);overflow:hidden':''}">${hdr}${rows}</div>`;
   }).join('');
 }
+function togglePdfGrp(mid){if(!window._pdfGrp)window._pdfGrp={};window._pdfGrp[mid]=window._pdfGrp[mid]===false?true:false;rPDFs();}
 function abrirPDF(){editPDFId=null;document.getElementById('pdf-tit').textContent='📄 Novo PDF';['pdf-nm','pdf-tot','pdf-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('pdf-ord').value='1';document.getElementById('pdf-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');document.getElementById('pdf-tipo').value='pdf';document.getElementById('pdf-pg-grp').style.display='block';clearBlocosTeo();addBlocoTeo();document.getElementById('pdf-calc').classList.add('hidden');document.getElementById('mod-pdf').classList.remove('hidden');}
 function editarPDF(id){const p=(S.pdfs||[]).find(x=>x.id===id);if(!p)return;editPDFId=id;document.getElementById('pdf-tit').textContent='✏️ Editar PDF';document.getElementById('pdf-nm').value=p.nome;document.getElementById('pdf-tot').value=p.pgTot||'';document.getElementById('pdf-obs').value=p.obs||'';document.getElementById('pdf-ord').value=p.ordem||1;document.getElementById('pdf-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}"${m.id===p.matId?' selected':''}>${m.nome}</option>`).join('');const t=p.tipo||'pdf';document.getElementById('pdf-tipo').value=t;document.getElementById('pdf-pg-grp').style.display=t==='videoaula'?'none':'block';clearBlocosTeo();if(t!=='videoaula'){if(p.blocosTeo&&p.blocosTeo.length){p.blocosTeo.forEach(b=>addBlocoTeo(b.ini,b.fim));}else{addBlocoTeo(p.pgInicio||1,p.pgFimTeoria||'');}}document.getElementById('mod-pdf').classList.remove('hidden');calcPDF();}
 function calcPDF(){const tot=parseInt(document.getElementById('pdf-tot').value)||0;const blocos=getBlocosTeo();const pg=Math.round(((S.horasDia||2)/2)*(S.pgPorHora||15));if(!tot||!blocos.length){document.getElementById('pdf-calc').classList.add('hidden');return;}const teo=blocos.reduce((s,b)=>s+(b.fim-b.ini+1),0);const lastFim=blocos[blocos.length-1].fim;const mapa=tot-lastFim;const sT=Math.ceil(teo/pg);const sM=1;const blocoStr=blocos.length>1?blocos.map((b,i)=>`Bloco ${i+1}: pág. ${b.ini}–${b.fim}`).join(' | '):`pág. ${blocos[0].ini}–${blocos[0].fim}`;document.getElementById('pdf-calc').textContent=`📊 ${teo} págs teoria (${blocoStr}, ~${sT} sessões) + ${mapa} págs mapeamento (~${sM} sessão) = ~${sT+sM} sessões`;document.getElementById('pdf-calc').classList.remove('hidden');}
