@@ -810,6 +810,20 @@ function tipoBadgeStyle(tipo){const m={'Teoria':'background:rgba(59,130,246,.15)
 // ══════════════════════════════════════════
 let timerSecs=0; // mantido para compatibilidade com modal de finalização
 
+// ══════════════════════════════════════════
+// NAVEGAÇÃO
+// ══════════════════════════════════════════
+let dashTabAtual='ativ';
+function P(id){
+  document.querySelectorAll('.pg').forEach(el=>el.classList.add('hidden'));
+  document.querySelectorAll('.ni').forEach(el=>el.classList.remove('on'));
+  const pg=document.getElementById('pg-'+id);if(pg)pg.classList.remove('hidden');
+  const ni=document.getElementById('nv-'+id);if(ni)ni.classList.add('on');
+  // IA Tutora tem display:flex em vez de block
+  if(id==='chat'){const c=document.getElementById('pg-chat');if(c){c.style.display='flex';c.classList.remove('hidden');}}
+  const fn={dash:rDash,arquivo:rArquivo,mats:rMats,pdfs:rPDFs,bizu:rBizu,met:rMet,chat:rChat,cfg:rCfg};
+  if(fn[id])fn[id]();
+}
 
 // ══════════════════════════════════════════
 // DASHBOARD
