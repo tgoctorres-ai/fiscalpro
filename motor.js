@@ -342,6 +342,13 @@ function motorGerarSlotsSemana(mats, diasSemana) {
  * @param {number} pgSessao páginas a ler nesta sessão
  * @returns {{ pgIni, pgFim, paginasNaSessao }} ou null se já completou tudo
  */
+function motorDiasDesde(dataStr) {
+  if (!dataStr) return 999;
+  const hoje = new Date();
+  const data = new Date(dataStr);
+  return Math.max(0, Math.floor((hoje - data) / (1000 * 60 * 60 * 24)));
+}
+
 function motorPgRealRange(blocosTeo, pgBase, pgSessao) {
   const tolerance = 5; // pode ultrapassar até 5 págs o alvo para não cortar blocos pequenos
   let flat = 0;
@@ -477,12 +484,16 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
         idx, codigo, est.pdfNome,
         { pgIni: null, pgFim: null, diaIdx });
 
-    case FASES.REVISAO:
+    case FASES.REVISAO: {
+      // Revisão só aparece 7 dias após o Teste (repetição espaçada)
+      const diasDesdeTest = motorDiasDesde(est.testeConcluidoEm);
+      if (est.testeConcluidoEm && diasDesdeTest < 7) return null;
       return motorAtividade(mat, 'Revisão',
         `Revisão — ${est.pdfNome || mat.nome}`,
-        'Releia os Bizus + revise Caderno de Erros desta matéria',
+        `Releia os Bizus + revise Caderno de Erros (${diasDesdeTest < 999 ? diasDesdeTest + 'd após Teste' : 'sem Teste prévio'})`,
         idx, codigo, est.pdfNome,
         { pgIni: null, pgFim: null, diaIdx });
+    }
 
     case FASES.TESTE:
       return motorAtividade(mat, 'Teste',
@@ -662,10 +673,10 @@ function motorFinalizarAtividade(S, ativ, registro) {
 
     case 'Mapeamento': {
       est.sessoesMap = (est.sessoesMap || 0) + 1;
-      // Após mapeamento completo — ir para Questões
-      est.fase = FASES.QUESTOES;
-      mensagem = '🗺️ Mapeamento concluído! Próximo: Questões TEC';
-      proximaFase = FASES.QUESTOES;
+      // Após mapeamento — ir direto para Teste (até 20 questões TEC)
+      est.fase = FASES.TESTE;
+      mensagem = '🗺️ Mapeamento concluído! Próximo: Teste (até 20 questões no TEC)';
+      proximaFase = FASES.TESTE;
       break;
     }
 
@@ -677,9 +688,10 @@ function motorFinalizarAtividade(S, ativ, registro) {
 
         if (pct >= THRESHOLD_APROVADO) {
           if (ativ.tipo === 'Teste') {
-            // Teste aprovado — verificar se há mais PDFs ou ir para manutenção
+            // Teste aprovado — agendar Revisão para 7 dias depois
+            est.testeConcluidoEm = hoje;
             est.fase = FASES.REVISAO;
-            mensagem = `🎯 ${pct}% no teste! Ótimo! Próximo: Revisão final`;
+            mensagem = `🎯 ${pct}% no Teste! Revisão agendada para daqui ~7 dias.`;
             proximaFase = FASES.REVISAO;
           } else {
             // Questões OK — ir para Revisão
@@ -712,10 +724,11 @@ function motorFinalizarAtividade(S, ativ, registro) {
     }
 
     case 'Revisão': {
-      // Após revisão — Teste
-      est.fase = FASES.TESTE;
-      mensagem = '🔄 Revisão concluída! Próximo: Teste';
-      proximaFase = FASES.TESTE;
+      // Ciclo completo: Teoria → Mapeamento → Teste → Revisão → Manutenção
+      est.fase = FASES.MANUTENCAO;
+      est.cicloConcluido = hoje;
+      mensagem = '✅ Revisão concluída! Ciclo completo. Ative o próximo PDF para continuar.';
+      proximaFase = FASES.MANUTENCAO;
       break;
     }
 

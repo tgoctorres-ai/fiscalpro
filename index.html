@@ -41,13 +41,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 .toast.ok{border-color:rgba(34,197,94,.4);color:var(--grn)}
 .toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
 /* TIMER */
-.timer-bar{background:var(--sur);border-bottom:1px solid var(--bdr);padding:0 16px;height:40px;display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:15;overflow:hidden}
-.timer-tabs{display:flex;gap:2px;background:var(--sur2);border-radius:6px;padding:2px;flex-shrink:0}
-.timer-tab{padding:3px 10px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;white-space:nowrap}
-.timer-tab.on{background:var(--gold);color:#000}
-.timer-display{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--txt);letter-spacing:2px;min-width:80px;flex-shrink:0}
-.timer-display.running{color:var(--grn)}
-.timer-btns{display:flex;gap:5px;flex-shrink:0}
+
 .tbtn{background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--muted);padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .2s;font-family:'DM Sans',sans-serif;white-space:nowrap}
 .tbtn:hover{border-color:var(--gold);color:var(--gold)}
 .tbtn.play{background:var(--gold);color:#000;border-color:var(--gold)}
@@ -285,9 +279,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
   .app{height:100dvh;height:100vh}
   .app-body{flex-direction:column;padding-bottom:50px}
   .main{order:1;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
-  .timer-bar{padding:0 8px;gap:5px;height:36px}
-  .timer-tab{padding:2px 7px;font-size:9px}
-  .timer-display{font-size:13px;min-width:66px;letter-spacing:1px}
+
   .tbtn{padding:3px 7px;font-size:9px}
   .tsep{display:none}
   .sb{width:100%!important;min-width:unset!important;height:50px;min-height:50px;border-right:none;border-top:1px solid var(--bdr);flex-direction:row;align-items:center;position:fixed;bottom:0;left:0;right:0;z-index:100;padding:0 2px;overflow-x:auto;overflow-y:hidden}
@@ -367,7 +359,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <div id="login-err" class="hidden" style="margin-top:10px;font-size:10px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 10px;line-height:1.5"></div>
     <button id="login-redirect-btn" class="hidden" onclick="loginRedirect()" style="width:100%;margin-top:6px;padding:9px;background:transparent;border:1px solid var(--bdr);border-radius:8px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">↗ Tentar via redirecionamento</button>
     <div class="login-footer" style="margin-top:12px">Dados salvos com segurança no Firestore.<br>Cada usuário acessa apenas seus próprios estudos.</div>
-    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.8 — Jul 2026</div>
+    <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.9 — Jul 2026</div>
   </div>
   <div id="login-loading" class="login-loading hidden"><div class="spin"></div><span id="loading-txt">Carregando...</span></div>
 </div>
@@ -376,21 +368,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 
 <!-- APP -->
 <div class="app hidden" id="app">
-  <!-- TIMER -->
-  <div class="timer-bar">
-    <div class="timer-tabs">
-      <div class="timer-tab on" id="ttab-cron" onclick="timerSetModo('cron')">Cronômetro</div>
-      <div class="timer-tab" id="ttab-pom" onclick="timerSetModo('pom')">Pomodoro</div>
-    </div>
-    <div class="tsep"></div>
-    <div class="timer-display" id="timer-disp">00:00:00</div>
-    <div class="timer-btns">
-      <button class="tbtn play" id="timer-play" onclick="timerToggle()">▶ Iniciar</button>
-      <button class="tbtn" onclick="timerReset()">↺ Reset</button>
-    </div>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:7px">
-      <div class="sync-badge" id="sync-badge">✓ Salvo</div>
-    </div>
+  <!-- SYNC BADGE -->
+  <div style="position:fixed;top:8px;right:12px;z-index:200">
+    <div class="sync-badge" id="sync-badge">✓ Salvo</div>
   </div>
 
   <div class="app-body">
@@ -421,7 +401,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
       </nav>
       <div class="sbfoot">
-        <div class="sbver">v4.8 — Jul 2026</div>
+        <div class="sbver">v4.9 — Jul 2026</div>
         <button class="logout-btn" onclick="logout()">↩ Sair</button>
       </div>
     </aside>
@@ -828,40 +808,8 @@ function tipoBadgeStyle(tipo){const m={'Teoria':'background:rgba(59,130,246,.15)
 // ══════════════════════════════════════════
 // TIMER
 // ══════════════════════════════════════════
-let timerInterval=null,timerSecs=0,timerRunning=false,timerModo='cron',pomFase='foco',pomFoco=25,pomBreak=5;
-function timerSetModo(m){timerModo=m;document.getElementById('ttab-cron').classList.toggle('on',m==='cron');document.getElementById('ttab-pom').classList.toggle('on',m==='pom');timerReset();}
-function timerToggle(){
-  if(timerRunning){
-    clearInterval(timerInterval);timerRunning=false;
-    document.getElementById('timer-play').textContent='▶ Iniciar';document.getElementById('timer-play').className='tbtn';document.getElementById('timer-disp').className='timer-display';
-    const h=timerSecs/3600;if(h>0){const t=td();if(!S.sess)S.sess={};if(!S.sess[t])S.sess[t]={horas:0,hist:[]};S.sess[t].horas=Math.round((S.sess[t].horas+h)*100)/100;save();}
-  }else{
-    timerRunning=true;document.getElementById('timer-play').textContent='⏸ Pausar';document.getElementById('timer-play').className='tbtn play';document.getElementById('timer-disp').className='timer-display running';
-    timerInterval=setInterval(()=>{
-      if(timerModo==='cron'){timerSecs++;timerDraw();}
-      else{if(timerSecs<=0){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-play').textContent='▶ Iniciar';document.getElementById('timer-play').className='tbtn';showToast(pomFase==='foco'?'🔔 Descanso!':'🔔 Foque!','ok');pomFase=pomFase==='foco'?'break':'foco';timerSecs=pomFase==='foco'?pomFoco*60:pomBreak*60;timerDraw();}else{timerSecs--;timerDraw();}}
-    },1000);
-  }
-}
-function timerReset(){clearInterval(timerInterval);timerRunning=false;timerSecs=timerModo==='pom'?pomFoco*60:0;pomFase='foco';document.getElementById('timer-play').textContent='▶ Iniciar';document.getElementById('timer-play').className='tbtn';document.getElementById('timer-disp').className='timer-display';timerDraw();}
-function timerDraw(){const s=timerSecs;if(timerModo==='cron'){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;document.getElementById('timer-disp').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;}else{const m=Math.floor(s/60),ss=s%60;document.getElementById('timer-disp').textContent=`${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;}}
+let timerSecs=0; // mantido para compatibilidade com modal de finalização
 
-// ══════════════════════════════════════════
-// NAVEGAÇÃO
-// ══════════════════════════════════════════
-let dashTabAtual='ativ';
-function P(name){
-  document.querySelectorAll('[id^="pg-"]').forEach(p=>{p.classList.add('hidden');p.style.display='';});
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
-  const pg=document.getElementById('pg-'+name);if(!pg)return;
-  pg.classList.remove('hidden');
-  if(name==='chat'){pg.style.display='flex';}
-  document.getElementById('nv-'+name)?.classList.add('on');
-  const n=new Date();
-  document.getElementById('dpill').textContent=`${DS[n.getDay()]}, ${n.getDate()} ${MS[n.getMonth()]} ${n.getFullYear()}`;
-  const fn={dash:rDash,arquivo:rArquivo,mats:rMats,pdfs:rPDFs,bizu:rBizu,met:rMet,chat:rChat,cfg:rCfg};
-  fn[name]?.();
-}
 
 // ══════════════════════════════════════════
 // DASHBOARD
@@ -968,7 +916,7 @@ function abrirModalFin(){
   if(td2.finalizacao==='questoes'){html+=`<div class="fin-field"><label>Questões respondidas</label><input type="number" id="fin-qtot" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;html+=`<div class="fin-field"><label>Questões acertadas</label><input type="number" id="fin-qac" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;}
   if(a.tipo==='Videoaula'){html+=`<div class="fin-field" style="grid-column:1/-1"><label>Vídeo assistido</label><input type="text" class="fi" id="fin-video" placeholder="Ex: Aula 3 — Porcentagem" style="width:100%;box-sizing:border-box"></div>`;}
   html+=`<div class="fin-field"><label>Horas</label><input type="number" id="fin-hr" min="0" max="12" placeholder="0" value="0"></div>`;
-  html+=`<div class="fin-field"><label>Minutos</label><input type="number" id="fin-min" min="0" max="59" placeholder="0" value="${Math.round(timerSecs/60)}"></div>`;
+  html+=`<div class="fin-field"><label>Minutos</label><input type="number" id="fin-min" min="0" max="59" placeholder="0" value="0"></div>`;
   document.getElementById('fin-campos').innerHTML=html;
   document.getElementById('fin-desemp').textContent='';document.getElementById('fin-dica').textContent=td2.finalizacao==='questoes'?'Informe questões e acertos para calcular o desempenho.':'Informe o tempo estudado.';
   document.getElementById('mod-fin').classList.remove('hidden');
@@ -989,6 +937,16 @@ function confirmarFin(){
   const res=Motor.finalizarAtividade(S,a,{horas:hr,minutos:min,questoesTotais:qtot,questoesAcertos:qac});
   S=res.S;a.status='concluida';a.tempo=hr+min/60;
   if(videoNome!==null){a.videoNome=videoNome;const est=S.estadoMat?.[a.matId];if(est)est.ultimoVideo=videoNome;}
+  // Verificar transição de fase e avisar sobre próximo PDF
+  if(res.proximaFase==='mapeamento'){
+    const pdfsMateria=(S.pdfs||[]).filter(p=>p.matId===a.matId).sort((x,y)=>(x.ordem||0)-(y.ordem||0));
+    const est2=S.estadoMat?.[a.matId];const idxAtual=pdfsMateria.findIndex(p=>p.id===est2?.pdfAtual);
+    const proximoPdf=pdfsMateria[idxAtual+1];
+    setTimeout(()=>{
+      if(proximoPdf){showToast(`📗 Teoria concluída! Próximo passo: Mapeamento. Após o ciclo completo, ative "${proximoPdf.nome}".),'ok');}
+      else if(idxAtual>=0){showToast('📗 Teoria concluída! Nenhum PDF seguinte cadastrado — cadastre o próximo para continuar.','err');}
+    },500);
+  }
   if(qtot!==null){a.questoesTotais=qtot;a.questoesAcertos=qac;a.desemp=res.pct;if(!S.qs)S.qs=[];if(qtot>0)S.qs.push({id:Date.now(),matId:a.matId,matNm:a.matNome,tot:qtot,ac:qac,pct:res.pct,tipo:a.tipo,data:td(),meta:paMetaNum});}
   const conc=meta.atividades.filter(x=>x.status==='concluida').length;
   if(conc>=meta.atividades.length){
@@ -1094,7 +1052,7 @@ function rPDFs(){
     const ativo=grpPdfs.find(p=>p.id===ativoId);
     const cor=mat?.cor||'#666';
     const nome=mat?.nome||'Sem matéria';
-    const aberto=window._pdfGrp[mid]!==false;
+    const aberto=window._pdfGrp[mid]===true; // fechado por padrão
 
     const chevron=`<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="transition:transform .2s;transform:rotate(${aberto?90:0}deg);flex-shrink:0"><path d="M3 2l4 3-4 3" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -1358,7 +1316,6 @@ function importarArq(e){const f=e.target.files[0];if(!f)return;const r=new FileR
     });
   }
 })();
-timerReset();
 document.getElementById('dpill').textContent=(()=>{const n=new Date();return `${DS[n.getDay()]}, ${n.getDate()} ${MS[n.getMonth()]} ${n.getFullYear()}`;})();
 
 // ══════════════════════════════════════════
