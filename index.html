@@ -358,7 +358,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     </button>
     <div id="login-err" class="hidden" style="margin-top:10px;font-size:10px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 10px;line-height:1.5"></div>
     <button id="login-redirect-btn" class="hidden" onclick="loginRedirect()" style="width:100%;margin-top:6px;padding:9px;background:transparent;border:1px solid var(--bdr);border-radius:8px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">↗ Tentar via redirecionamento</button>
-    <div class="login-footer" style="margin-top:12px">Dados salvos com segurança no Firestore.<br>Cada usuário acessa apenas seus próprios estudos.</div>
+
     <div style="font-size:8px;color:var(--dim);margin-top:8px;letter-spacing:.5px">v4.9 — Jul 2026</div>
   </div>
   <div id="login-loading" class="login-loading hidden"><div class="spin"></div><span id="loading-txt">Carregando...</span></div>
@@ -943,7 +943,7 @@ function confirmarFin(){
     const est2=S.estadoMat?.[a.matId];const idxAtual=pdfsMateria.findIndex(p=>p.id===est2?.pdfAtual);
     const proximoPdf=pdfsMateria[idxAtual+1];
     setTimeout(()=>{
-      if(proximoPdf){showToast(`📗 Teoria concluída! Próximo passo: Mapeamento. Após o ciclo completo, ative "${proximoPdf.nome}".),'ok');}
+      if(proximoPdf){showToast(`📗 Teoria concluída! Próximo passo: Mapeamento. Após o ciclo completo, ative "${proximoPdf.nome}".`,'ok');}
       else if(idxAtual>=0){showToast('📗 Teoria concluída! Nenhum PDF seguinte cadastrado — cadastre o próximo para continuar.','err');}
     },500);
   }
