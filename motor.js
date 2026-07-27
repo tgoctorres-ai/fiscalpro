@@ -12,10 +12,12 @@ const FASES = {
   TEORIA:      'teoria',
   MAPEAMENTO:  'mapeamento',
   QUESTOES:    'questoes',
-  REVISAO:     'revisao',
   TESTE:       'teste',
+  REVISAO:     'revisao',   // Revisão 1 — 7 dias após o Teste
+  REVISAO_2:   'revisao2',  // Revisão 2 — 30 dias após Revisão 1
+  REVISAO_3:   'revisao3',  // Revisão 3 — 60 dias após Revisão 2
   REFORCO:     'reforco',
-  MANUTENCAO:  'manutencao',
+  MANUTENCAO:  'manutencao' // Manutenção contínua — 90d, 120d, 180d...,
   CONCLUIDA:   'concluida'
 };
 
@@ -34,7 +36,7 @@ const TIPOS_ATIVIDADE = {
 
 // Intervalos de revisão espaçada de longo prazo (em dias)
 // Baseado na curva de Ebbinghaus + adaptação para concursos 2+ anos
-const INTERVALOS_MANUTENCAO = [7, 15, 30, 60, 90, 120, 180];
+const INTERVALOS_MANUTENCAO = [90, 120, 180, 270, 365]; // começa 90d após Revisão 3
 
 // Threshold de desempenho
 const THRESHOLD_APROVADO = 70; // >= 70% passa para próxima fase
@@ -261,13 +263,19 @@ function motorGerarMeta(S, metaNum) {
             break;
           }
           case 'Mapeamento':
-            simEst.fase = FASES.QUESTOES;
+            simEst.fase = FASES.TESTE;
             break;
           case 'Questões':
             simEst.fase = FASES.REVISAO;
             break;
-          case 'Revisão':
-            simEst.fase = FASES.TESTE;
+          case 'Revisão 1':
+            simEst.fase = FASES.REVISAO_2;
+            break;
+          case 'Revisão 2':
+            simEst.fase = FASES.REVISAO_3;
+            break;
+          case 'Revisão 3':
+            simEst.fase = FASES.MANUTENCAO;
             break;
           case 'Videoaula':
             simEst.sessoesVideoaula = (simEst.sessoesVideoaula || 0) + 1;
@@ -485,12 +493,32 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
         { pgIni: null, pgFim: null, diaIdx });
 
     case FASES.REVISAO: {
-      // Revisão só aparece 7 dias após o Teste (repetição espaçada)
-      const diasDesdeTest = motorDiasDesde(est.testeConcluidoEm);
-      if (est.testeConcluidoEm && diasDesdeTest < 7) return null;
-      return motorAtividade(mat, 'Revisão',
-        `Revisão — ${est.pdfNome || mat.nome}`,
-        `Releia os Bizus + revise Caderno de Erros (${diasDesdeTest < 999 ? diasDesdeTest + 'd após Teste' : 'sem Teste prévio'})`,
+      // Revisão 1 — aparece 7 dias após o Teste
+      const d1 = motorDiasDesde(est.testeConcluidoEm);
+      if (est.testeConcluidoEm && d1 < 7) return null;
+      return motorAtividade(mat, 'Revisão 1',
+        `${est.pdfNome || mat.nome}`,
+        `Revisão 1 de 3 — Bizus + Caderno de Erros (${d1 < 999 ? d1 + 'd após Teste' : '—'})`,
+        idx, codigo, est.pdfNome,
+        { pgIni: null, pgFim: null, diaIdx });
+    }
+    case FASES.REVISAO_2: {
+      // Revisão 2 — aparece 30 dias após Revisão 1
+      const d2 = motorDiasDesde(est.revisao1ConcluidaEm);
+      if (est.revisao1ConcluidaEm && d2 < 30) return null;
+      return motorAtividade(mat, 'Revisão 2',
+        `${est.pdfNome || mat.nome}`,
+        `Revisão 2 de 3 — Bizus + questões do Caderno de Erros (${d2 < 999 ? d2 + 'd após Rev.1' : '—'})`,
+        idx, codigo, est.pdfNome,
+        { pgIni: null, pgFim: null, diaIdx });
+    }
+    case FASES.REVISAO_3: {
+      // Revisão 3 — aparece 60 dias após Revisão 2
+      const d3 = motorDiasDesde(est.revisao2ConcluidaEm);
+      if (est.revisao2ConcluidaEm && d3 < 60) return null;
+      return motorAtividade(mat, 'Revisão 3',
+        `${est.pdfNome || mat.nome}`,
+        `Revisão 3 de 3 — Simulado dos Bizus + revisão completa de Erros (${d3 < 999 ? d3 + 'd após Rev.2' : '—'})`,
         idx, codigo, est.pdfNome,
         { pgIni: null, pgFim: null, diaIdx });
     }
@@ -528,7 +556,7 @@ function motorGerarAtivVideoaula(S, mat, est, metaNum, idx, codigo, diaIdx) {
   // A cada N sessões de videoaula, intercala questões
   const sessoesParaQuestao = S.sessoesVideoAulaPorQuestao || 3;
 
-  if (est.fase === FASES.QUESTOES || (est.sessoesVideoaula > 0 && est.sessoesVideoaula % sessoesParaQuestao === 0 && est.fase !== FASES.REVISAO)) {
+  if (est.fase === FASES.QUESTOES || (est.sessoesVideoaula > 0 && est.sessoesVideoaula % sessoesParaQuestao === 0 && est.fase !== FASES.REVISAO && est.fase !== FASES.REVISAO_2 && est.fase !== FASES.REVISAO_3)) {
     return motorAtividade(mat, 'Questões',
       `Questões TEC — ${mat.nome}`,
       `Resolva ${S.qtecMeta || 20} questões no TEC Concursos`,
@@ -723,11 +751,24 @@ function motorFinalizarAtividade(S, ativ, registro) {
       break;
     }
 
-    case 'Revisão': {
-      // Ciclo completo: Teoria → Mapeamento → Teste → Revisão → Manutenção
+    case 'Revisão 1': {
+      est.revisao1ConcluidaEm = hoje;
+      est.fase = FASES.REVISAO_2;
+      mensagem = '✅ Revisão 1 concluída! Próxima revisão em ~30 dias.';
+      proximaFase = FASES.REVISAO_2;
+      break;
+    }
+    case 'Revisão 2': {
+      est.revisao2ConcluidaEm = hoje;
+      est.fase = FASES.REVISAO_3;
+      mensagem = '✅ Revisão 2 concluída! Última revisão em ~60 dias.';
+      proximaFase = FASES.REVISAO_3;
+      break;
+    }
+    case 'Revisão 3': {
+      est.revisao3ConcluidaEm = hoje;
       est.fase = FASES.MANUTENCAO;
-      est.cicloConcluido = hoje;
-      mensagem = '✅ Revisão concluída! Ciclo completo. Ative o próximo PDF para continuar.';
+      mensagem = '🎓 Ciclo completo! Este PDF vai para manutenção periódica (90d → 120d → 180d...).';
       proximaFase = FASES.MANUTENCAO;
       break;
     }
