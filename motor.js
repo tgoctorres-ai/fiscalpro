@@ -227,9 +227,9 @@ function motorGerarMeta(S, metaNum) {
   const atividades = [];
   let idx = 1;
 
-  // Simula o avanço de páginas por matéria durante a geração do plano,
-  // para que cada sessão de teoria exiba o intervalo correto de páginas.
-  const simPgAtual = {};
+  // Estado simulado completo por matéria: avança pgAtual E fase durante a geração do plano,
+  // garantindo que Teoria → Mapeamento → Questões → Revisão → Teste sejam gerados na ordem certa.
+  const simStates = {};
 
   slots.forEach((slot, diaIdx) => {
     slot.forEach(matId => {
@@ -240,18 +240,38 @@ function motorGerarMeta(S, metaNum) {
       if (!S.estadoMat) S.estadoMat = {};
       if (!S.estadoMat[matId]) S.estadoMat[matId] = motorEstadoMateria(mat);
 
-      const est = S.estadoMat[matId];
+      const realEst = S.estadoMat[matId];
 
-      // Inicializar o simulador com o progresso real atual da matéria
-      if (simPgAtual[matId] === undefined) simPgAtual[matId] = est.pgAtual || 0;
+      // Criar cópia simulada na primeira vez que a matéria aparece no plano
+      if (!simStates[matId]) simStates[matId] = { ...realEst };
+      const simEst = simStates[matId];
 
-      const ativ = motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, simPgAtual[matId]);
+      // Gerar atividade usando o estado simulado (não o real)
+      const ativ = motorGerarAtividade(S, mat, simEst, pgSessao, metaNum, idx, diaIdx);
       if (ativ) {
         atividades.push(ativ);
         idx++;
-        // Avançar contagem simulada apenas para sessões de teoria
-        if (ativ.tipo === 'Teoria' && ativ.paginasNaSessao) {
-          simPgAtual[matId] = (simPgAtual[matId] || 0) + ativ.paginasNaSessao;
+
+        // Avançar estado simulado conforme o tipo de atividade gerada
+        switch (ativ.tipo) {
+          case 'Teoria': {
+            const avanco = ativ.paginasNaSessao || pgSessao;
+            simEst.pgAtual = Math.min(simEst.pgTotal, simEst.pgAtual + avanco);
+            if (simEst.pgAtual >= simEst.pgTotal) simEst.fase = FASES.MAPEAMENTO;
+            break;
+          }
+          case 'Mapeamento':
+            simEst.fase = FASES.QUESTOES;
+            break;
+          case 'Questões':
+            simEst.fase = FASES.REVISAO;
+            break;
+          case 'Revisão':
+            simEst.fase = FASES.TESTE;
+            break;
+          case 'Videoaula':
+            simEst.sessoesVideoaula = (simEst.sessoesVideoaula || 0) + 1;
+            break;
         }
       }
     });
