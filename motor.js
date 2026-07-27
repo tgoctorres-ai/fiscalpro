@@ -323,49 +323,60 @@ function motorGerarSlotsSemana(mats, diasSemana) {
  * @returns {{ pgIni, pgFim, paginasNaSessao }} ou null se já completou tudo
  */
 function motorPgRealRange(blocosTeo, pgBase, pgSessao) {
+  const tolerance = 5; // pode ultrapassar até 5 págs o alvo para não cortar blocos pequenos
   let flat = 0;
-  let remaining = pgSessao;
-  let started = false;
-  let firstPgIni = null;
-  let lastPgFim = null;
-  let totalTaken = 0;
-  const partes = [];
+  let startIdx = -1;
+  let startOff = 0;
 
-  for (const bloco of blocosTeo) {
-    const size = bloco.fim - bloco.ini + 1;
-    if (!started) {
-      if (pgBase < flat + size) {
-        const offsetInBlock = pgBase - flat;
-        const leftInBlock = size - offsetInBlock;
-        const take = Math.min(remaining, leftInBlock);
-        const pgIni = bloco.ini + offsetInBlock;
-        const pgFim = pgIni + take - 1;
-        partes.push(`Pág. ${pgIni} a ${pgFim}`);
-        firstPgIni = pgIni; lastPgFim = pgFim;
-        totalTaken += take; remaining -= take;
-        started = true;
-        if (remaining <= 0) break;
+  // Encontra o bloco onde pgBase cai
+  for (let i = 0; i < blocosTeo.length; i++) {
+    const sz = blocosTeo[i].fim - blocosTeo[i].ini + 1;
+    if (pgBase < flat + sz) { startIdx = i; startOff = pgBase - flat; break; }
+    flat += sz;
+  }
+  if (startIdx === -1) return null;
+
+  const partes = [];
+  let total = 0;
+  let firstIni = null;
+  let lastFim = null;
+
+  for (let i = startIdx; i < blocosTeo.length; i++) {
+    const b = blocosTeo[i];
+    const off   = (i === startIdx) ? startOff : 0;
+    const avail = (b.fim - b.ini + 1) - off;
+    const ini   = b.ini + off;
+
+    if (avail > pgSessao + tolerance) {
+      // Bloco enorme: partir — pegar apenas o que falta para completar a sessão
+      const take = (total === 0) ? pgSessao : Math.max(0, pgSessao - total);
+      if (take > 0) {
+        partes.push(`Pág. ${ini} a ${ini + take - 1}`);
+        if (firstIni === null) firstIni = ini;
+        lastFim = ini + take - 1;
+        total  += take;
       }
-    } else {
-      // Continua para o próximo bloco com o restante da sessão
-      const take = Math.min(remaining, size);
-      const pgIni = bloco.ini;
-      const pgFim = pgIni + take - 1;
-      partes.push(`Pág. ${pgIni} a ${pgFim}`);
-      lastPgFim = pgFim;
-      totalTaken += take; remaining -= take;
-      if (remaining <= 0) break;
+      break;
     }
-    flat += size;
+
+    // Bloco normal: incluir se aproxima do alvo (minimização de distância)
+    const newTotal = total + avail;
+    if (total === 0) {
+      // Primeiro bloco: sempre incluir
+      partes.push(`Pág. ${ini} a ${b.fim}`);
+      firstIni = ini; lastFim = b.fim; total = newTotal;
+    } else {
+      const distAtual = Math.abs(total    - pgSessao);
+      const distNova  = Math.abs(newTotal - pgSessao);
+      if (distNova <= distAtual && newTotal <= pgSessao + tolerance) {
+        partes.push(`Pág. ${ini} a ${b.fim}`);
+        lastFim = b.fim; total = newTotal;
+      } else break;
+    }
   }
 
-  if (totalTaken === 0) return null;
-  return {
-    pgIni: firstPgIni,
-    pgFim: lastPgFim,
-    paginasNaSessao: totalTaken,
-    label: partes.join(' + ')
-  };
+  if (total === 0) return null;
+  return { pgIni: firstIni, pgFim: lastFim, paginasNaSessao: total, label: partes.join(' + ') };
 }
 
 function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimulado) {
