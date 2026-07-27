@@ -17,7 +17,7 @@ const FASES = {
   REVISAO_2:   'revisao2',  // Revisão 2 — 30 dias após Revisão 1
   REVISAO_3:   'revisao3',  // Revisão 3 — 60 dias após Revisão 2
   REFORCO:     'reforco',
-  MANUTENCAO:  'manutencao' // Manutenção contínua — 90d, 120d, 180d...,
+  MANUTENCAO:  'manutencao', // Manutenção contínua — 90d, 120d, 180d...
   CONCLUIDA:   'concluida'
 };
 
@@ -27,6 +27,9 @@ const TIPOS_ATIVIDADE = {
   Mapeamento:  { finalizacao: 'tempo',   icone: '🗺️', cor: '#f97316' },
   Questões:    { finalizacao: 'questoes', icone: '📝', cor: '#a855f7' },
   Revisão:     { finalizacao: 'tempo',   icone: '🔄', cor: '#06b6d4' },
+  'Revisão 1': { finalizacao: 'tempo',   icone: '🔄', cor: '#06b6d4' },
+  'Revisão 2': { finalizacao: 'tempo',   icone: '🔁', cor: '#0891b2' },
+  'Revisão 3': { finalizacao: 'tempo',   icone: '✅', cor: '#059669' },
   Teste:       { finalizacao: 'questoes', icone: '🎯', cor: '#f59e0b' },
   Reforço:     { finalizacao: 'questoes', icone: '💪', cor: '#ef4444' },
   'Lei Seca':  { finalizacao: 'tempo',   icone: '⚖️', cor: '#64748b' },
