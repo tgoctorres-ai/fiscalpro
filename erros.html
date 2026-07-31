@@ -370,6 +370,10 @@ async function salvarFirestore() {
     await db.collection('usuarios').doc(currentUser.uid).collection('dados').doc('estado').set(
       { cadErros: S.cadErros, _ts: Date.now() }, { merge: true }
     );
+    // Sincronizar com o index.html quando rodando como iframe
+    if (window.parent !== window && window.parent.S) {
+      window.parent.S.cadErros = [...S.cadErros];
+    }
   } catch(e) { console.error('Erro ao salvar:', e); }
 }
 

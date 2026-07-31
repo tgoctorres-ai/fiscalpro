@@ -784,7 +784,8 @@ function finLogin(user){
 async function saveToFirestore(){
   if(!currentUser||!S)return;Motor.validarEstado(S);
   const badge=document.getElementById('sync-badge');badge.textContent='↑ Salvando...';badge.className='sync-badge saving';
-  try{await db.collection('usuarios').doc(currentUser.uid).collection('dados').doc('estado').set({...S,_ts:Date.now()});badge.textContent='✓ Salvo';badge.className='sync-badge';}
+  try{const {cadErros:_cadBkp,...stateToSave}=S;
+    await db.collection('usuarios').doc(currentUser.uid).collection('dados').doc('estado').set({...stateToSave,_ts:Date.now()},{merge:true});badge.textContent='✓ Salvo';badge.className='sync-badge';}
   catch(e){console.error(e);badge.textContent='⚠ Erro';badge.className='sync-badge saving';}
 }
 function scheduleSave(){clearTimeout(saveTimeout);saveTimeout=setTimeout(saveToFirestore,1500);}
