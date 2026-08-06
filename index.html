@@ -47,7 +47,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 .tbtn.play{background:var(--gold);color:#000;border-color:var(--gold)}
 .tbtn.play:hover{background:#d4920f}
 .tsep{width:1px;height:18px;background:var(--bdr);flex-shrink:0}
-.sync-badge{font-size:9px;padding:2px 6px;border-radius:8px;background:var(--grndim);color:var(--grn);border:1px solid rgba(34,197,94,.3);white-space:nowrap;flex-shrink:0}
+.sync-badge{font-size:9px;padding:2px 6px;border-radius:8px;background:var(--grndim);color:var(--grn);border:1px solid rgba(34,197,94,.3);white-space:nowrap;flex-shrink:0;opacity:0;transition:opacity .4s}
 .sync-badge.saving{background:var(--orgdim);color:var(--org);border-color:rgba(249,115,22,.3)}
 /* APP LAYOUT */
 .app{display:flex;height:100vh;height:100dvh;flex-direction:column;overflow:hidden}
@@ -440,7 +440,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
           <div class="g4">
             <div class="sc sc-blue"><div class="sc-label">⭐ Seu desempenho</div><div class="sc-val" id="sc-desemp">0%</div><div class="sc-ico">⭐</div></div>
             <div class="sc sc-green"><div class="sc-label">⏱ Horas estudadas</div><div class="sc-val" id="sc-horas">0h00m</div><div class="sc-ico">⏱</div></div>
-            <div class="sc sc-orange"><div class="sc-label">✅ Questões</div><div class="sc-val" id="sc-qq">0</div><div class="sc-ico">✅</div></div>
+            <div class="sc sc-orange"><div class="sc-label">✅ Média acertos</div><div class="sc-val" id="sc-qq">0</div><div class="sc-ico">✅</div></div>
             <div class="sc sc-yellow"><div class="sc-label">📅 Média/dia</div><div class="sc-val" id="sc-media">0h00m</div><div class="sc-ico">📅</div></div>
           </div>
           <div class="card">
@@ -783,9 +783,9 @@ function finLogin(user){
 }
 async function saveToFirestore(){
   if(!currentUser||!S)return;Motor.validarEstado(S);
-  const badge=document.getElementById('sync-badge');badge.textContent='↑ Salvando...';badge.className='sync-badge saving';
+  const badge=document.getElementById('sync-badge');badge.textContent='↑ Salvando...';badge.className='sync-badge saving';badge.style.opacity='1';
   try{const {cadErros:_cadBkp,...stateToSave}=S;
-    await db.collection('usuarios').doc(currentUser.uid).collection('dados').doc('estado').set({...stateToSave,_ts:Date.now()},{merge:true});badge.textContent='✓ Salvo';badge.className='sync-badge';}
+    await db.collection('usuarios').doc(currentUser.uid).collection('dados').doc('estado').set({...stateToSave,_ts:Date.now()},{merge:true});badge.textContent='✓ Salvo';badge.className='sync-badge';badge.style.opacity='1';setTimeout(()=>{badge.style.opacity='0';},2500);}
   catch(e){console.error(e);badge.textContent='⚠ Erro';badge.className='sync-badge saving';}
 }
 function scheduleSave(){clearTimeout(saveTimeout);saveTimeout=setTimeout(saveToFirestore,1500);}
@@ -804,7 +804,7 @@ function showToast(msg,type='ok'){const t=document.getElementById('toast');t.tex
 function fecharMod(id){document.getElementById(id).classList.add('hidden');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov:not(.hidden)').forEach(m=>m.classList.add('hidden'));});
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.add('hidden');}));
-function tipoBadgeStyle(tipo){const m={'Teoria':'background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3)','Mapeamento':'background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)','Questões':'background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)','Revisão':'background:rgba(6,182,212,.15);color:#06b6d4;border:1px solid rgba(6,182,212,.3)','Teste':'background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)','Reforço Leve':'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)','Reforço Médio':'background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)','Reforço Intenso':'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)','Videoaula':'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)','Manutenção':'background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.3)'};return m[tipo]||m['Teoria'];}
+function tipoBadgeStyle(tipo){const m={'Teoria':'background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3)','Mapeamento':'background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)','Questões':'background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)','Revisão':'background:rgba(6,182,212,.15);color:#06b6d4;border:1px solid rgba(6,182,212,.3)','Teste':'background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)','Reforço Leve':'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)','Reforço Médio':'background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)','Reforço Intenso':'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)','Videoaula':'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)','Manutenção':'background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.3)','Revisão 1':'background:rgba(6,182,212,.15);color:#06b6d4;border:1px solid rgba(6,182,212,.3)','Revisão 2':'background:rgba(8,145,178,.15);color:#0891b2;border:1px solid rgba(8,145,178,.3)','Revisão 3':'background:rgba(5,150,105,.15);color:#059669;border:1px solid rgba(5,150,105,.3)'};return m[tipo]||m['Teoria'];}
 
 // ══════════════════════════════════════════
 // TIMER
@@ -842,13 +842,17 @@ function rDash(){
   document.getElementById('meta-inic').textContent=`Iniciada: ${fmt(meta.iniciada)}`;
   const mts=new Set(ativs.map(a=>a.matNome)).size;document.getElementById('meta-info').textContent=`${mts} Matérias • ${ativs.length} Atividades`;
   document.getElementById('prox-num').textContent=`Meta ${metaNum+1}`;
-  document.getElementById('prox-data').textContent=fmt(addDias(meta.iniciada||td(),7));
+  const prazoTotalMeta=(meta.prazoExtra||0)+7;
+  document.getElementById('prox-data').textContent=fmt(addDias(meta.iniciada||td(),prazoTotalMeta));
   const totH=Object.values(S.sess||{}).reduce((s,v)=>s+(v.horas||0),0);
   const dias=Object.values(S.sess||{}).filter(v=>v.horas>0).length;
-  const qs=S.qs||[];const totQ=qs.length;const desemp=totQ>0?Math.round(qs.filter(q=>q.pct>=70).length/totQ*100):0;
+  const qs=(S.qs||[]).filter(q=>q.meta===metaNum);const totQ=qs.length;
+  const desemp=totQ>0?Math.round(qs.filter(q=>q.pct>=70).length/totQ*100):0;
+  const avgPct=totQ>0?Math.round(qs.reduce((s,q)=>s+(q.pct||0),0)/totQ):0;
   document.getElementById('sc-desemp').textContent=desemp+'%';
+  document.getElementById('sc-qq').textContent=totQ>0?avgPct+'%':'—';
   document.getElementById('sc-horas').textContent=fmtH(totH);
-  document.getElementById('sc-qq').textContent=totQ;
+
   document.getElementById('sc-media').textContent=fmtH(dias>0?totH/dias:0);
   const nA=ativs.filter(a=>!a.tipo.includes('Reforço')).length;const nR=ativs.filter(a=>a.tipo.includes('Reforço')).length;
   document.getElementById('cnt-ativ').textContent=nA;document.getElementById('cnt-ref').textContent=nR;

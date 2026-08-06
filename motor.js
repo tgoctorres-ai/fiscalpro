@@ -269,15 +269,20 @@ function motorGerarMeta(S, metaNum) {
             simEst.fase = FASES.TESTE;
             break;
           case 'Questões':
+          case 'Teste':
+            simEst.testeConcluidoEm = td();
             simEst.fase = FASES.REVISAO;
             break;
           case 'Revisão 1':
+            simEst.revisao1ConcluidaEm = td();
             simEst.fase = FASES.REVISAO_2;
             break;
           case 'Revisão 2':
+            simEst.revisao2ConcluidaEm = td();
             simEst.fase = FASES.REVISAO_3;
             break;
           case 'Revisão 3':
+            simEst.revisao3ConcluidaEm = td();
             simEst.fase = FASES.MANUTENCAO;
             break;
           case 'Videoaula':
@@ -321,20 +326,29 @@ function motorGerarSlotsSemana(mats, diasSemana) {
     for (let i = 0; i < freq; i++) pool.push(m.id);
   });
 
-  // Embaralhar pool e distribuir nos slots
+  // Embaralhar pool e distribuir nos slots garantindo diversidade por dia
   const shuffled = pool.sort(() => 0.5 - Math.random());
+  const uniqueMats = [...new Set(pool)]; // matérias únicas disponíveis
   let poolIdx = 0;
 
   for (let dia = 0; dia < diasSemana; dia++) {
     const mat1 = shuffled[poolIdx % shuffled.length];
     poolIdx++;
-    let mat2 = shuffled[poolIdx % shuffled.length];
-    // Evitar a mesma matéria no mesmo dia
-    let tries = 0;
-    while (mat2 === mat1 && tries < 10) {
-      poolIdx++;
+
+    let mat2 = null;
+    if (uniqueMats.length > 1) {
+      // Buscar mat2 diferente de mat1 — prioriza matérias não usadas hoje
+      let tries = 0;
       mat2 = shuffled[poolIdx % shuffled.length];
-      tries++;
+      while (mat2 === mat1 && tries < shuffled.length) {
+        poolIdx++;
+        mat2 = shuffled[poolIdx % shuffled.length];
+        tries++;
+      }
+      // Se não encontrou diferente, pegar qualquer outra do pool único
+      if (mat2 === mat1) {
+        mat2 = uniqueMats.find(m => m !== mat1) || null;
+      }
     }
     poolIdx++;
     slots[dia] = [mat1, mat2].filter(Boolean);
@@ -489,7 +503,7 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
         { pgIni: null, pgFim: null, diaIdx });
 
     case FASES.QUESTOES:
-      return motorAtividade(mat, 'Questões',
+      return motorAtividade(mat, 'Teste',
         `Questões TEC — ${mat.nome}`,
         `Resolva ${S.qtecMeta || 20} questões no TEC Concursos`,
         idx, codigo, est.pdfNome,
