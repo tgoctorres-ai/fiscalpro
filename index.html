@@ -942,8 +942,9 @@ function abrirModalFin(){
   if(td2.finalizacao==='questoes'){html+=`<div class="fin-field"><label>Questões respondidas</label><input type="number" id="fin-qtot" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;html+=`<div class="fin-field"><label>Questões acertadas</label><input type="number" id="fin-qac" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;}
   if(a.tipo==='Videoaula'){
     const est2=S.estadoMat?.[a.matId];
-    const vidAtual=(est2?.videosAssistidos||0)+1;
-    const vidTotal=est2?.totalVideos||0;
+    const pdfVid=(S.pdfs||[]).find(p=>p.id===est2?.pdfAtual);
+    const vidTotal=est2?.totalVideos||pdfVid?.totalVideos||0;
+    const vidAtual=(est2?.videosAssistidos||est2?.pgAtual||0)+1;
     if(vidTotal>0){
       html+=`<div class="fin-field" style="grid-column:1/-1"><label>Vídeos assistidos nesta sessão</label><input type="number" class="fi" id="fin-videos-sessao" min="1" max="${vidTotal}" value="1" placeholder="Ex: 2"><div style="font-size:8px;color:var(--muted);margin-top:3px">A partir do vídeo ${vidAtual} de ${vidTotal}. Informe quantos assistiu hoje.</div></div>`;
     }else{
@@ -1336,17 +1337,22 @@ function rCfg(){
     if(!est||!est.pdfAtual)return '';
     const fase=est.fase||'teoria';
     const pgAtual=est.pgAtual||0;
-    const pgTotal=est.pgTotal||0;
+    const pdfObj=(S.pdfs||[]).find(p=>p.id===est.pdfAtual);
+    const isVid=pdfObj?.tipo==='videoaula';
+    const totalVid=pdfObj?.totalVideos||est.totalVideos||0;
+    const pgTotal=isVid?totalVid:(est.pgTotal||0);
     const pdfNome=est.pdfNome||'PDF';
     const opts=FASES_OPT.map(f=>`<option value="${f}"${f===fase?' selected':''}>${FASE_LABELS[f]||f}</option>`).join('');
+    const lbl=isVid?`Vídeos assistidos (de ${totalVid} no módulo)`:`Páginas lidas (de ${pgTotal} de teoria)`;
+    const sfx=isVid?`${pgAtual}/${totalVid} vídeos`:`${pgAtual}/${pgTotal} págs`;
     return `<div style="border:1px solid var(--bdr);border-radius:6px;padding:8px 10px">
       <div style="font-size:10px;font-weight:700;color:var(--fg);margin-bottom:6px">${m.nome} <span style="color:var(--muted);font-weight:400;font-size:9px">— ${pdfNome}</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end">
-        <div><label style="font-size:8px;color:var(--muted);display:block;margin-bottom:2px">Páginas lidas (de ${pgTotal} de teoria)</label>
-          <input type="number" class="fi corr-pg" data-matid="${m.id}" min="0" max="${pgTotal}" value="${pgAtual}" style="width:100%;box-sizing:border-box"></div>
+        <div><label style="font-size:8px;color:var(--muted);display:block;margin-bottom:2px">${lbl}</label>
+          <input type="number" class="fi corr-pg" data-matid="${m.id}" data-isvid="${isVid}" data-totalvid="${totalVid}" min="0" max="${pgTotal||totalVid}" value="${pgAtual}" style="width:100%;box-sizing:border-box"></div>
         <div><label style="font-size:8px;color:var(--muted);display:block;margin-bottom:2px">Fase atual</label>
           <select class="fs corr-fase" data-matid="${m.id}">${opts}</select></div>
-        <div style="font-size:9px;color:var(--muted);padding-bottom:6px">${pgAtual}/${pgTotal} págs</div>
+        <div style="font-size:9px;color:var(--muted);padding-bottom:6px">${sfx}</div>
       </div>
     </div>`;
   }).filter(Boolean).join('');
@@ -1360,8 +1366,15 @@ function salvarCorrecoes(){
     const faseEl=document.querySelector(`.corr-fase[data-matid="${matId}"]`);
     const fase=faseEl?faseEl.value:'teoria';
     if(!S.estadoMat||!S.estadoMat[matId])return;
+    const isVid2=inp.dataset.isvid==='true';
+    const totalVid2=parseInt(inp.dataset.totalvid)||0;
     S.estadoMat[matId].pgAtual=pg;
     S.estadoMat[matId].fase=fase;
+    if(isVid2&&totalVid2>0){
+      S.estadoMat[matId].totalVideos=totalVid2;
+      S.estadoMat[matId].pgTotal=totalVid2;
+      S.estadoMat[matId].videosAssistidos=pg;
+    }
     // Limpar datas de revisão se voltou para teoria/mapeamento
     if(['teoria','mapeamento'].includes(fase)){
       delete S.estadoMat[matId].testeConcluidoEm;
