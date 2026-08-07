@@ -757,6 +757,8 @@ function loginRedirect(){
 function logout(){if(!confirm('Sair da conta?'))return;Motor.backup(S);auth.signOut();}
 auth.onAuthStateChanged(async user=>{
   if(!user){
+    clearTimeout(saveTimeout); // Cancelar qualquer gravação pendente antes de trocar usuário
+    S=Motor.getDefaultState(); // Limpar estado em memória para não vazar dados
     currentUser=null;
     // Resetar UI de login para estado inicial
     document.getElementById('app').classList.add('hidden');
@@ -788,15 +790,18 @@ function finLogin(user){
   document.getElementById('app').classList.remove('hidden');
   P('dash');
 }
-async function saveToFirestore(){
-  if(!currentUser||!S)return;Motor.validarEstado(S);
+async function saveToFirestore(uidSnapshot){
+  const uid=uidSnapshot||currentUser?.uid;
+  if(!uid||!S||!currentUser||currentUser.uid!==uid)return; // Abortar se usuário mudou
+  Motor.validarEstado(S);
   const badge=document.getElementById('sync-badge');badge.textContent='↑ Salvando...';badge.className='sync-badge saving';badge.style.opacity='1';
   try{const {cadErros:_cadBkp,...stateToSave}=S;
-    await db.collection('usuarios').doc(currentUser.uid).collection('dados').doc('estado').set({...stateToSave,_ts:Date.now()},{merge:true});badge.textContent='✓ Salvo';badge.className='sync-badge';badge.style.opacity='1';setTimeout(()=>{badge.style.opacity='0';},2500);}
-  catch(e){console.error(e);badge.textContent='⚠ Erro';badge.className='sync-badge saving';}
+    await db.collection('usuarios').doc(uid).collection('dados').doc('estado').set({...stateToSave,_ts:Date.now()},{merge:true});
+    if(currentUser?.uid===uid){badge.textContent='✓ Salvo';badge.className='sync-badge';badge.style.opacity='1';setTimeout(()=>{badge.style.opacity='0';},2500);}
+  }catch(e){console.error(e);badge.textContent='⚠ Erro';badge.className='sync-badge saving';}
 }
-function scheduleSave(){clearTimeout(saveTimeout);saveTimeout=setTimeout(saveToFirestore,1500);}
-function save(){scheduleSave();}
+function scheduleSave(){clearTimeout(saveTimeout);const uid=currentUser?.uid;if(!uid)return;saveTimeout=setTimeout(()=>saveToFirestore(uid),1500);}
+function save(){if(!currentUser)return;scheduleSave();}
 
 // ══════════════════════════════════════════
 // UTILS
