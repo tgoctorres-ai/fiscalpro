@@ -287,6 +287,11 @@ function motorGerarMeta(S, metaNum) {
             break;
           case 'Videoaula':
             simEst.sessoesVideoaula = (simEst.sessoesVideoaula || 0) + 1;
+            if (simEst.totalVideos > 0) {
+              simEst.videosAssistidos = (simEst.videosAssistidos || 0) + 1;
+              simEst.pgAtual = simEst.videosAssistidos;
+              if (simEst.pgAtual >= simEst.totalVideos) simEst.fase = FASES.MAPEAMENTO;
+            }
             break;
         }
       }
@@ -445,7 +450,7 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
     return null; // não é hora de revisão ainda
   }
 
-  // Matéria tipo videoaula (Matemática)
+  // Matéria tipo videoaula: usar função dedicada
   if (mat.tipo === 'videoaula') {
     return motorGerarAtivVideoaula(S, mat, est, metaNum, idx, codigo, diaIdx);
   }
@@ -690,8 +695,8 @@ function motorFinalizarAtividade(S, ativ, registro) {
 
   switch (ativ.tipo) {
     case 'Teoria': {
-      // Avançar páginas (respeita blocos: usa paginasNaSessao da atividade se disponível)
-      const avanco = ativ.paginasNaSessao || pgSessao;
+      // Usar páginas realmente lidas (informado pelo usuário) > paginasNaSessao > pgSessao
+      const avanco = registro.paginasLidas || ativ.paginasNaSessao || pgSessao;
       const novasPags = est.pgAtual + avanco;
       est.pgAtual = Math.min(est.pgTotal, novasPags);
       est.sessoesTeo = (est.sessoesTeo || 0) + 1;
@@ -793,14 +798,28 @@ function motorFinalizarAtividade(S, ativ, registro) {
     case 'Videoaula': {
       est.sessoesVideoaula = (est.sessoesVideoaula || 0) + 1;
       est.aulaAtual = (est.aulaAtual || 0) + 1;
-      const sessoesParaQ = S.sessoesVideoAulaPorQuestao || 3;
-      if (est.sessoesVideoaula % sessoesParaQ === 0) {
-        est.fase = FASES.QUESTOES;
-        mensagem = `🎬 Aula ${est.aulaAtual} concluída! Próximo: Questões TEC`;
-        proximaFase = FASES.QUESTOES;
+      if (est.totalVideos > 0) {
+        const qtd = registro.videosNaSessao || 1;
+        est.videosAssistidos = Math.min(est.totalVideos, (est.videosAssistidos || 0) + qtd);
+        est.pgAtual = est.videosAssistidos;
+        if (est.videosAssistidos >= est.totalVideos) {
+          est.fase = FASES.MAPEAMENTO;
+          mensagem = `🎬 Módulo concluído! Próximo: Mapeamento.`;
+          proximaFase = FASES.MAPEAMENTO;
+        } else {
+          const faltam = est.totalVideos - est.videosAssistidos;
+          mensagem = `📺 ${qtd} vídeo${qtd>1?'s':''} registrado${qtd>1?'s':''}! Faltam ${faltam} de ${est.totalVideos}.`;
+        }
       } else {
-        const faltam = sessoesParaQ - (est.sessoesVideoaula % sessoesParaQ);
-        mensagem = `🎬 Aula ${est.aulaAtual} concluída! Faltam ${faltam} aula(s) para questões`;
+        const sessoesParaQ = S.sessoesVideoAulaPorQuestao || 3;
+        if (est.sessoesVideoaula % sessoesParaQ === 0) {
+          est.fase = FASES.QUESTOES;
+          mensagem = `🎬 Aula ${est.aulaAtual} concluída! Próximo: Questões TEC`;
+          proximaFase = FASES.QUESTOES;
+        } else {
+          const faltam = sessoesParaQ - (est.sessoesVideoaula % sessoesParaQ);
+          mensagem = `🎬 Aula ${est.aulaAtual} concluída! Faltam ${faltam} aula(s) para questões`;
+        }
       }
       break;
     }

@@ -401,7 +401,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
         <div class="ni" onclick="P('cfg')" id="nv-cfg"><span class="ni-ico">⚙️</span><span>Configurações</span></div>
       </nav>
       <div class="sbfoot">
-        <div class="sbver">v4.9 — Jul 2026</div>
+        <div class="sbver">v5.0 — Ago 2026</div>
         <button class="logout-btn" onclick="logout()">↩ Sair</button>
       </div>
     </aside>
@@ -530,6 +530,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
             <div class="fg"><label class="flbl">Seu nome</label><input type="text" class="fi" id="cfg-nm" placeholder="Ex: Tiago"></div>
             <button class="btn btn-g btn-sm" onclick="salvarCfg()">Salvar</button><span id="cfg-ok" class="hidden" style="font-size:8px;color:var(--grn);margin-left:6px">✓ Salvo!</span>
           </div>
+          <div class="card mb">
+            <div style="font-size:8px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px">🔧 Corrigir Progresso por Matéria</div>
+            <div style="font-size:9px;color:var(--muted);margin-bottom:10px">Use quando o sistema avançou a fase incorretamente. Defina as páginas realmente lidas e a fase correta.</div>
+            <div id="corr-lista" style="display:flex;flex-direction:column;gap:8px"></div>
+            <button class="btn btn-g btn-sm" style="margin-top:10px" onclick="salvarCorrecoes()">💾 Salvar correções</button>
+          </div>
           <div class="card">
             <div style="font-size:8px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px">📦 Dados</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
@@ -626,6 +632,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <div class="mtitle" id="pdf-tit">Novo PDF</div>
     <div class="frow"><div class="fg"><label class="flbl">Nome do PDF</label><input type="text" class="fi" id="pdf-nm" placeholder="Ex: Tributário PDF 00"></div><div class="fg"><label class="flbl">Matéria</label><select class="fs" id="pdf-mat"></select></div></div>
     <div class="frow"><div class="fg"><label class="flbl">Tipo de material</label><select class="fs" id="pdf-tipo" onchange="togglePdfPgGrp()"><option value="pdf">📄 PDF</option><option value="videoaula">📹 Videoaula</option></select></div></div>
+    <div id="pdf-video-grp" style="display:none"><div class="frow"><div class="fg"><label class="flbl">Total de vídeos no módulo</label><input type="number" class="fi" id="pdf-total-videos" min="1" placeholder="Ex: 10"><div class="fhint">O sistema vai rastrear seu progresso vídeo a vídeo até concluir o módulo.</div></div></div></div>
     <div id="pdf-pg-grp"><div class="frow"><div class="fg"><label class="flbl">Total de páginas</label><input type="number" class="fi" id="pdf-tot" min="1" placeholder="Ex: 120" oninput="calcPDF()"></div></div><div id="pdf-blocos-teo"></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><button type="button" class="btn btn-gh btn-sm" onclick="addBlocoTeo()">+ Bloco de teoria</button><div class="fhint">O restante = mapeamento (questões comentadas do PDF)</div></div></div>
     <div class="ibox gold hidden" id="pdf-calc"></div>
     <div class="fg"><label class="flbl">Ordem (número sequencial)</label><input type="number" class="fi" id="pdf-ord" min="1" value="1"></div>
@@ -933,7 +940,17 @@ function abrirModalFin(){
   document.getElementById('fin-tipo').textContent=a.tipo+' — '+a.matNome;
   let html='';
   if(td2.finalizacao==='questoes'){html+=`<div class="fin-field"><label>Questões respondidas</label><input type="number" id="fin-qtot" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;html+=`<div class="fin-field"><label>Questões acertadas</label><input type="number" id="fin-qac" min="0" max="200" placeholder="0" oninput="calcFinDesemp()"></div>`;}
-  if(a.tipo==='Videoaula'){html+=`<div class="fin-field" style="grid-column:1/-1"><label>Vídeo assistido</label><input type="text" class="fi" id="fin-video" placeholder="Ex: Aula 3 — Porcentagem" style="width:100%;box-sizing:border-box"></div>`;}
+  if(a.tipo==='Videoaula'){
+    const est2=S.estadoMat?.[a.matId];
+    const vidAtual=(est2?.videosAssistidos||0)+1;
+    const vidTotal=est2?.totalVideos||0;
+    if(vidTotal>0){
+      html+=`<div class="fin-field" style="grid-column:1/-1"><label>Vídeos assistidos nesta sessão</label><input type="number" class="fi" id="fin-videos-sessao" min="1" max="${vidTotal}" value="1" placeholder="Ex: 2"><div style="font-size:8px;color:var(--muted);margin-top:3px">A partir do vídeo ${vidAtual} de ${vidTotal}. Informe quantos assistiu hoje.</div></div>`;
+    }else{
+      html+=`<div class="fin-field" style="grid-column:1/-1"><label>Vídeo assistido</label><input type="text" class="fi" id="fin-video" placeholder="Ex: Aula 3 — Porcentagem" style="width:100%;box-sizing:border-box"></div>`;
+    }
+  }
+  if(a.tipo==='Teoria'){html+=`<div class="fin-field"><label>Pág. inicial lida</label><input type="number" class="fi" id="fin-pg-ini" min="1" placeholder="${a.pgIni||'—'}" value="${a.pgIni||''}"></div><div class="fin-field"><label>Pág. final lida</label><input type="number" class="fi" id="fin-pg-fim" min="1" placeholder="${a.pgFim||'—'}" value="${a.pgFim||''}"><div style="font-size:8px;color:var(--muted);margin-top:3px">Sugerido: ${a.pgIni||'?'} – ${a.pgFim||'?'}</div></div>`;}
   html+=`<div class="fin-field"><label>Horas</label><input type="number" id="fin-hr" min="0" max="12" placeholder="0" value="0"></div>`;
   html+=`<div class="fin-field"><label>Minutos</label><input type="number" id="fin-min" min="0" max="59" placeholder="0" value="0"></div>`;
   document.getElementById('fin-campos').innerHTML=html;
@@ -953,7 +970,12 @@ function confirmarFin(){
   const qtot=td2.finalizacao==='questoes'?parseInt(document.getElementById('fin-qtot')?.value)||0:null;
   const qac=td2.finalizacao==='questoes'?parseInt(document.getElementById('fin-qac')?.value)||0:null;
   const videoNome=a.tipo==='Videoaula'?(document.getElementById('fin-video')?.value.trim()||''):null;
-  const res=Motor.finalizarAtividade(S,a,{horas:hr,minutos:min,questoesTotais:qtot,questoesAcertos:qac});
+  const videosNaSessao=a.tipo==='Videoaula'?parseInt(document.getElementById('fin-videos-sessao')?.value)||1:null;
+  // Calcular páginas realmente lidas (se informado pelo usuário)
+  const finPgIni=a.tipo==='Teoria'?parseInt(document.getElementById('fin-pg-ini')?.value)||0:0;
+  const finPgFim=a.tipo==='Teoria'?parseInt(document.getElementById('fin-pg-fim')?.value)||0:0;
+  const paginasLidas=(finPgIni>0&&finPgFim>=finPgIni)?finPgFim-finPgIni+1:null;
+  const res=Motor.finalizarAtividade(S,a,{horas:hr,minutos:min,questoesTotais:qtot,questoesAcertos:qac,paginasLidas,videosNaSessao});
   S=res.S;a.status='concluida';a.tempo=hr+min/60;
   if(videoNome!==null){a.videoNome=videoNome;const est=S.estadoMat?.[a.matId];if(est)est.ultimoVideo=videoNome;}
   // Verificar transição de fase e avisar sobre próximo PDF
@@ -1037,7 +1059,7 @@ function delMat(id){if(!confirm('Excluir matéria?'))return;S.mats=(S.mats||[]).
 // ══════════════════════════════════════════
 // BLOCOS DE TEORIA (multi-bloco)
 // ══════════════════════════════════════════
-function togglePdfPgGrp(){const v=document.getElementById('pdf-tipo').value;document.getElementById('pdf-pg-grp').style.display=v==='videoaula'?'none':'block';}
+function togglePdfPgGrp(){const v=document.getElementById('pdf-tipo').value;document.getElementById('pdf-pg-grp').style.display=v==='videoaula'?'none':'block';document.getElementById('pdf-video-grp').style.display=v==='videoaula'?'block':'none';}
 
 function addBlocoTeo(ini='',fim=''){const c=document.getElementById('pdf-blocos-teo');const idx=c.children.length;const div=document.createElement('div');div.className='frow';div.style.alignItems='flex-end';div.innerHTML=`<div class="fg"><label class="flbl">Bloco ${idx+1} — Pág. inicial</label><input type="number" class="fi pdf-teo-ini" min="1" placeholder="Ex: 3" value="${ini}" oninput="calcPDF()"></div><div class="fg"><label class="flbl">Bloco ${idx+1} — Pág. final</label><input type="number" class="fi pdf-teo-fim" min="1" placeholder="Ex: 11" value="${fim}" oninput="calcPDF()"></div>${idx>0?`<button type="button" class="btn btn-r btn-xs" onclick="removeBlocoTeo(this)" style="margin-bottom:2px;flex-shrink:0">−</button>`:''}`;c.appendChild(div);calcPDF();}
 function removeBlocoTeo(btn){btn.closest('.frow').remove();const c=document.getElementById('pdf-blocos-teo');Array.from(c.children).forEach((d,i)=>{const lbs=d.querySelectorAll('label');if(lbs[0])lbs[0].textContent=`Bloco ${i+1} — Pág. inicial`;if(lbs[1])lbs[1].textContent=`Bloco ${i+1} — Pág. final`;});calcPDF();}
@@ -1095,7 +1117,7 @@ function rPDFs(){
             <span style="font-size:11px;font-weight:600;color:${isAtivo?'var(--fg)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pdf.nome}</span>
             ${isAtivo?'<span style="font-size:8px;color:var(--grn);flex-shrink:0;letter-spacing:.3px">● ATIVO</span>':''}
           </div>
-          ${pdf.pgTot?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${pdf.pgTeoria||0} págs teoria · ${pdf.pgTot} págs total${pdf.obs?` · ${pdf.obs}`:''}</div>`:(pdf.obs?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${pdf.obs}</div>`:'')}
+          ${pdf.tipo==='videoaula'?('<div style="font-size:9px;color:var(--muted);margin-top:2px">📹 '+(pdf.totalVideos||0)+' vídeos'+(isAtivo&&est?' · '+(est.videosAssistidos||0)+'/'+(pdf.totalVideos||0)+' assistidos':'')+(pdf.obs?' · '+pdf.obs:'')+'</div>'):(pdf.pgTot?('<div style="font-size:9px;color:var(--muted);margin-top:2px">'+(pdf.pgTeoria||0)+' págs teoria · '+pdf.pgTot+' págs total'+(pdf.obs?' · '+pdf.obs:'')+'</div>'):(pdf.obs?('<div style="font-size:9px;color:var(--muted);margin-top:2px">'+pdf.obs+'</div>'):''))}
           ${isAtivo?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px"><div class="pbar" style="flex:1;height:2px"><div class="pfill n" style="width:${pg}%"></div></div><span style="font-size:9px;color:var(--grn)">${pg}%</span></div>`:''}
         </div>
         <div style="display:flex;gap:3px;flex-shrink:0">
@@ -1110,12 +1132,12 @@ function rPDFs(){
   }).join('');
 }
 function togglePdfGrp(mid){if(!window._pdfGrp)window._pdfGrp={};window._pdfGrp[mid]=window._pdfGrp[mid]===false?true:false;rPDFs();}
-function abrirPDF(){editPDFId=null;document.getElementById('pdf-tit').textContent='📄 Novo PDF';['pdf-nm','pdf-tot','pdf-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('pdf-ord').value='1';document.getElementById('pdf-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');document.getElementById('pdf-tipo').value='pdf';document.getElementById('pdf-pg-grp').style.display='block';clearBlocosTeo();addBlocoTeo();document.getElementById('pdf-calc').classList.add('hidden');document.getElementById('mod-pdf').classList.remove('hidden');}
-function editarPDF(id){const p=(S.pdfs||[]).find(x=>x.id===id);if(!p)return;editPDFId=id;document.getElementById('pdf-tit').textContent='✏️ Editar PDF';document.getElementById('pdf-nm').value=p.nome;document.getElementById('pdf-tot').value=p.pgTot||'';document.getElementById('pdf-obs').value=p.obs||'';document.getElementById('pdf-ord').value=p.ordem||1;document.getElementById('pdf-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}"${m.id===p.matId?' selected':''}>${m.nome}</option>`).join('');const t=p.tipo||'pdf';document.getElementById('pdf-tipo').value=t;document.getElementById('pdf-pg-grp').style.display=t==='videoaula'?'none':'block';clearBlocosTeo();if(t!=='videoaula'){if(p.blocosTeo&&p.blocosTeo.length){p.blocosTeo.forEach(b=>addBlocoTeo(b.ini,b.fim));}else{addBlocoTeo(p.pgInicio||1,p.pgFimTeoria||'');}}document.getElementById('mod-pdf').classList.remove('hidden');calcPDF();}
+function abrirPDF(){editPDFId=null;document.getElementById('pdf-tit').textContent='📄 Novo PDF';['pdf-nm','pdf-tot','pdf-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('pdf-ord').value='1';document.getElementById('pdf-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');document.getElementById('pdf-tipo').value='pdf';document.getElementById('pdf-pg-grp').style.display='block';document.getElementById('pdf-video-grp').style.display='none';document.getElementById('pdf-total-videos').value='';clearBlocosTeo();addBlocoTeo();document.getElementById('pdf-calc').classList.add('hidden');document.getElementById('mod-pdf').classList.remove('hidden');}
+function editarPDF(id){const p=(S.pdfs||[]).find(x=>x.id===id);if(!p)return;editPDFId=id;document.getElementById('pdf-tit').textContent='✏️ Editar PDF';document.getElementById('pdf-nm').value=p.nome;document.getElementById('pdf-tot').value=p.pgTot||'';document.getElementById('pdf-obs').value=p.obs||'';document.getElementById('pdf-ord').value=p.ordem||1;document.getElementById('pdf-mat').innerHTML=(S.mats||[]).map(m=>`<option value="${m.id}"${m.id===p.matId?' selected':''}>${m.nome}</option>`).join('');const t=p.tipo||'pdf';document.getElementById('pdf-tipo').value=t;document.getElementById('pdf-pg-grp').style.display=t==='videoaula'?'none':'block';document.getElementById('pdf-video-grp').style.display=t==='videoaula'?'block':'none';if(t==='videoaula')document.getElementById('pdf-total-videos').value=p.totalVideos||'';clearBlocosTeo();if(t!=='videoaula'){if(p.blocosTeo&&p.blocosTeo.length){p.blocosTeo.forEach(b=>addBlocoTeo(b.ini,b.fim));}else{addBlocoTeo(p.pgInicio||1,p.pgFimTeoria||'');}}document.getElementById('mod-pdf').classList.remove('hidden');calcPDF();}
 function calcPDF(){const tot=parseInt(document.getElementById('pdf-tot').value)||0;const blocos=getBlocosTeo();const pg=Math.round(((S.horasDia||2)/2)*(S.pgPorHora||15));if(!tot||!blocos.length){document.getElementById('pdf-calc').classList.add('hidden');return;}const teo=blocos.reduce((s,b)=>s+(b.fim-b.ini+1),0);const lastFim=blocos[blocos.length-1].fim;const mapa=tot-lastFim;const sT=Math.ceil(teo/pg);const sM=1;const blocoStr=blocos.length>1?blocos.map((b,i)=>`Bloco ${i+1}: pág. ${b.ini}–${b.fim}`).join(' | '):`pág. ${blocos[0].ini}–${blocos[0].fim}`;document.getElementById('pdf-calc').textContent=`📊 ${teo} págs teoria (${blocoStr}, ~${sT} sessões) + ${mapa} págs mapeamento (~${sM} sessão) = ~${sT+sM} sessões`;document.getElementById('pdf-calc').classList.remove('hidden');}
-function salvarPDF(){const nm=document.getElementById('pdf-nm').value.trim();if(!nm){showToast('Informe o nome!','err');return;}if(!S.pdfs)S.pdfs=[];const _tipo=document.getElementById('pdf-tipo').value;let _blocos=[],_teo=0;if(_tipo!=='videoaula'){_blocos=getBlocosTeo();if(!_blocos.length){showToast('Informe ao menos um bloco de teoria!','err');return;}_teo=_blocos.reduce((s,b)=>s+(b.fim-b.ini+1),0);}const d={nome:nm,tipo:_tipo,matId:parseInt(document.getElementById('pdf-mat').value),pgTot:_tipo==='videoaula'?0:parseInt(document.getElementById('pdf-tot').value)||0,blocosTeo:_tipo==='videoaula'?[]:_blocos,pgInicio:_blocos[0]?.ini||0,pgFimTeoria:_blocos[_blocos.length-1]?.fim||0,pgTeoria:_teo,obs:document.getElementById('pdf-obs').value.trim(),ordem:parseInt(document.getElementById('pdf-ord').value)||1,concluido:false};if(editPDFId){const i=S.pdfs.findIndex(p=>p.id===editPDFId);if(i>=0)S.pdfs[i]={...S.pdfs[i],...d};}else S.pdfs.push({id:Date.now(),...d});save();fecharMod('mod-pdf');rPDFs();showToast('PDF salvo!');}
+function salvarPDF(){const nm=document.getElementById('pdf-nm').value.trim();if(!nm){showToast('Informe o nome!','err');return;}if(!S.pdfs)S.pdfs=[];const _tipo=document.getElementById('pdf-tipo').value;let _blocos=[],_teo=0,_totalVids=0;if(_tipo==='videoaula'){_totalVids=parseInt(document.getElementById('pdf-total-videos').value)||0;if(!_totalVids){showToast('Informe o total de vídeos do módulo!','err');return;}}else{_blocos=getBlocosTeo();if(!_blocos.length){showToast('Informe ao menos um bloco de teoria!','err');return;}_teo=_blocos.reduce((s,b)=>s+(b.fim-b.ini+1),0);}const d={nome:nm,tipo:_tipo,matId:parseInt(document.getElementById('pdf-mat').value),pgTot:_tipo==='videoaula'?_totalVids:parseInt(document.getElementById('pdf-tot').value)||0,totalVideos:_tipo==='videoaula'?_totalVids:0,blocosTeo:_tipo==='videoaula'?[]:_blocos,pgInicio:_blocos[0]?.ini||0,pgFimTeoria:_blocos[_blocos.length-1]?.fim||0,pgTeoria:_tipo==='videoaula'?0:_teo,obs:document.getElementById('pdf-obs').value.trim(),ordem:parseInt(document.getElementById('pdf-ord').value)||1,concluido:false};if(editPDFId){const i=S.pdfs.findIndex(p=>p.id===editPDFId);if(i>=0)S.pdfs[i]={...S.pdfs[i],...d};}else S.pdfs.push({id:Date.now(),...d});save();fecharMod('mod-pdf');rPDFs();showToast('PDF salvo!');}
 function delPDF(id){if(!confirm('Excluir PDF?'))return;S.pdfs=(S.pdfs||[]).filter(p=>p.id!==id);save();rPDFs();}
-function vincularPDF(id){const pdf=(S.pdfs||[]).find(p=>p.id===id);if(!pdf)return;if(!S.estadoMat)S.estadoMat={};if(!S.estadoMat[pdf.matId])S.estadoMat[pdf.matId]=Motor.estadoMateria((S.mats||[]).find(m=>m.id===pdf.matId)||{id:pdf.matId,nome:'',peso:3,cor:'#f5a623'});const est=S.estadoMat[pdf.matId];est.pdfAtual=pdf.id;est.pdfNome=pdf.nome;est.pgTotal=pdf.pgTeoria||pdf.pgTot||0;est.pgMapeamento=(pdf.pgTot||0)-(pdf.pgTeoria||0);est.pgAtual=0;est.blocosTeo=pdf.blocosTeo||null;est.pgOffset=pdf.blocosTeo?0:(pdf.pgInicio||1)-1;est.fase=Motor.FASES.TEORIA;save();rPDFs();showToast(`"${pdf.nome}" vinculado!`,'ok');}
+function vincularPDF(id){const pdf=(S.pdfs||[]).find(p=>p.id===id);if(!pdf)return;if(!S.estadoMat)S.estadoMat={};if(!S.estadoMat[pdf.matId])S.estadoMat[pdf.matId]=Motor.estadoMateria((S.mats||[]).find(m=>m.id===pdf.matId)||{id:pdf.matId,nome:'',peso:3,cor:'#f5a623'});const est=S.estadoMat[pdf.matId];est.pdfAtual=pdf.id;est.pdfNome=pdf.nome;if(pdf.tipo==='videoaula'){est.pgTotal=pdf.totalVideos||0;est.pgMapeamento=0;est.totalVideos=pdf.totalVideos||0;est.videosAssistidos=0;est.blocosTeo=null;est.pgOffset=0;}else{est.pgTotal=pdf.pgTeoria||pdf.pgTot||0;est.pgMapeamento=(pdf.pgTot||0)-(pdf.pgTeoria||0);est.blocosTeo=pdf.blocosTeo||null;est.pgOffset=pdf.blocosTeo?0:(pdf.pgInicio||1)-1;}est.pgAtual=0;est.fase=Motor.FASES.TEORIA;save();rPDFs();showToast(`"${pdf.nome}" vinculado!`,'ok');}
 
 // ══════════════════════════════════════════
 // BIZUS
@@ -1296,8 +1318,59 @@ function salvarReg(){const d=document.getElementById('rg-dt').value;if(!d)return
 // ══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
-function rCfg(){document.getElementById('cfg-key').value=S.apiKey||'';document.getElementById('cfg-hs').value=S.horasDia||2;document.getElementById('cfg-dias').value=S.diasSemana||7;document.getElementById('cfg-pph').value=S.pgPorHora||15;document.getElementById('cfg-qtec').value=S.qtecMeta||20;document.getElementById('cfg-nm').value=S.nome||'';}
+function rCfg(){
+  document.getElementById('cfg-key').value=S.apiKey||'';
+  document.getElementById('cfg-hs').value=S.horasDia||2;
+  document.getElementById('cfg-dias').value=S.diasSemana||7;
+  document.getElementById('cfg-pph').value=S.pgPorHora||15;
+  document.getElementById('cfg-qtec').value=S.qtecMeta||20;
+  document.getElementById('cfg-nm').value=S.nome||'';
+  // Renderizar lista de correção de progresso
+  const FASE_LABELS={'teoria':'📘 Teoria','mapeamento':'🗺️ Mapeamento','teste':'🎯 Teste','revisao':'🔄 Revisão 1','revisao2':'🔄 Revisão 2','revisao3':'🔄 Revisão 3','manutencao':'🔁 Manutenção'};
+  const FASES_OPT=['teoria','mapeamento','teste','revisao','revisao2','revisao3','manutencao'];
+  const lista=document.getElementById('corr-lista');
+  if(!lista)return;
+  const mats=S.mats||[];
+  const rows=mats.map(m=>{
+    const est=S.estadoMat?.[m.id];
+    if(!est||!est.pdfAtual)return '';
+    const fase=est.fase||'teoria';
+    const pgAtual=est.pgAtual||0;
+    const pgTotal=est.pgTotal||0;
+    const pdfNome=est.pdfNome||'PDF';
+    const opts=FASES_OPT.map(f=>`<option value="${f}"${f===fase?' selected':''}>${FASE_LABELS[f]||f}</option>`).join('');
+    return `<div style="border:1px solid var(--bdr);border-radius:6px;padding:8px 10px">
+      <div style="font-size:10px;font-weight:700;color:var(--fg);margin-bottom:6px">${m.nome} <span style="color:var(--muted);font-weight:400;font-size:9px">— ${pdfNome}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end">
+        <div><label style="font-size:8px;color:var(--muted);display:block;margin-bottom:2px">Páginas lidas (de ${pgTotal} de teoria)</label>
+          <input type="number" class="fi corr-pg" data-matid="${m.id}" min="0" max="${pgTotal}" value="${pgAtual}" style="width:100%;box-sizing:border-box"></div>
+        <div><label style="font-size:8px;color:var(--muted);display:block;margin-bottom:2px">Fase atual</label>
+          <select class="fs corr-fase" data-matid="${m.id}">${opts}</select></div>
+        <div style="font-size:9px;color:var(--muted);padding-bottom:6px">${pgAtual}/${pgTotal} págs</div>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+  lista.innerHTML=rows||'<div style="font-size:9px;color:var(--muted)">Nenhuma matéria com PDF ativo encontrada.</div>';
+}
 function salvarKey(){const k=document.getElementById('cfg-key').value.trim();S.apiKey=k;localStorage.setItem('fp_apikey',k);save();const el=document.getElementById('key-ok');el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),2000);showToast('API key salva!');}
+function salvarCorrecoes(){
+  document.querySelectorAll('.corr-pg').forEach(inp=>{
+    const matId=parseInt(inp.dataset.matid);
+    const pg=parseInt(inp.value)||0;
+    const faseEl=document.querySelector(`.corr-fase[data-matid="${matId}"]`);
+    const fase=faseEl?faseEl.value:'teoria';
+    if(!S.estadoMat||!S.estadoMat[matId])return;
+    S.estadoMat[matId].pgAtual=pg;
+    S.estadoMat[matId].fase=fase;
+    // Limpar datas de revisão se voltou para teoria/mapeamento
+    if(['teoria','mapeamento'].includes(fase)){
+      delete S.estadoMat[matId].testeConcluidoEm;
+      delete S.estadoMat[matId].revisao1ConcluidaEm;
+      delete S.estadoMat[matId].revisao2ConcluidaEm;
+    }
+  });
+  save();showToast('✅ Progresso corrigido! Gere um novo plano.','ok');rCfg();
+}
 function salvarCfg(){S.horasDia=parseFloat(document.getElementById('cfg-hs').value)||2;S.diasSemana=parseInt(document.getElementById('cfg-dias').value)||7;S.pgPorHora=parseInt(document.getElementById('cfg-pph').value)||15;S.qtecMeta=parseInt(document.getElementById('cfg-qtec').value)||20;S.nome=document.getElementById('cfg-nm').value.trim();save();const el=document.getElementById('cfg-ok');el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),2000);showToast('Configurações salvas!');}
 
 // ══════════════════════════════════════════
