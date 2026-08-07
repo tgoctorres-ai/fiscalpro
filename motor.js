@@ -270,8 +270,10 @@ function motorGerarMeta(S, metaNum) {
             break;
           case 'Questões':
           case 'Teste':
-            simEst.testeConcluidoEm = td();
-            simEst.fase = FASES.REVISAO;
+            if (!simEst.revisaoQueue) simEst.revisaoQueue = [];
+            simEst.revisaoQueue.push({pdfId:simEst.pdfAtual,pdfNome:simEst.pdfNome,
+              testeConcluidoEm:td(),revisao1ConcluidaEm:null,revisao2ConcluidaEm:null,revisao3ConcluidaEm:null});
+            simEst.pgAtual=0; simEst.fase=FASES.TEORIA; // simula auto-avanço para próximo PDF
             break;
           case 'Revisão 1':
             simEst.revisao1ConcluidaEm = td();
@@ -448,6 +450,27 @@ function motorGerarAtividade(S, mat, est, pgSessao, metaNum, idx, diaIdx, pgSimu
         { pgIni: null, pgFim: null, diaIdx });
     }
     return null; // não é hora de revisão ainda
+  }
+
+  // Verificar fila de revisões de PDFs anteriores (revisões paralelas)
+  if (est.revisaoQueue && est.revisaoQueue.length > 0) {
+    for (const item of est.revisaoQueue) {
+      if (!item.revisao1ConcluidaEm && motorDiasDesde(item.testeConcluidoEm) >= 7) {
+        return motorAtividade(mat, 'Revisão 1', item.pdfNome || mat.nome,
+          `Revisão 1 de 3 — Bizus + Caderno de Erros (${motorDiasDesde(item.testeConcluidoEm)}d após Teste)`,
+          idx, codigo, item.pdfNome, { revisaoPdfId: item.pdfId, pgIni: null, pgFim: null, diaIdx });
+      }
+      if (item.revisao1ConcluidaEm && !item.revisao2ConcluidaEm && motorDiasDesde(item.revisao1ConcluidaEm) >= 30) {
+        return motorAtividade(mat, 'Revisão 2', item.pdfNome || mat.nome,
+          `Revisão 2 de 3 — Bizus + questões do Caderno (${motorDiasDesde(item.revisao1ConcluidaEm)}d após Rev.1)`,
+          idx, codigo, item.pdfNome, { revisaoPdfId: item.pdfId, pgIni: null, pgFim: null, diaIdx });
+      }
+      if (item.revisao2ConcluidaEm && !item.revisao3ConcluidaEm && motorDiasDesde(item.revisao2ConcluidaEm) >= 60) {
+        return motorAtividade(mat, 'Revisão 3', item.pdfNome || mat.nome,
+          `Revisão 3 de 3 — Simulado completo (${motorDiasDesde(item.revisao2ConcluidaEm)}d após Rev.2)`,
+          idx, codigo, item.pdfNome, { revisaoPdfId: item.pdfId, pgIni: null, pgFim: null, diaIdx });
+      }
+    }
   }
 
   // Matéria tipo videoaula: usar função dedicada
@@ -628,6 +651,7 @@ function motorAtividade(mat, tipo, titulo, sub, idx, codigo, pdfNome, extras) {
     pgIni: extras?.pgIni || null,
     pgFim: extras?.pgFim || null,
     paginasNaSessao: extras?.paginasNaSessao || null,
+    revisaoPdfId: extras?.revisaoPdfId || null,
     diaIdx: extras?.diaIdx || 0,
     grauReforco: extras?.grauReforco || null,
     semPDF: extras?.semPDF || false,
@@ -774,24 +798,29 @@ function motorFinalizarAtividade(S, ativ, registro) {
     }
 
     case 'Revisão 1': {
-      est.revisao1ConcluidaEm = hoje;
-      est.fase = FASES.REVISAO_2;
-      mensagem = '✅ Revisão 1 concluída! Próxima revisão em ~30 dias.';
-      proximaFase = FASES.REVISAO_2;
+      if (ativ.revisaoPdfId && est.revisaoQueue) {
+        const item = est.revisaoQueue.find(q => q.pdfId === ativ.revisaoPdfId);
+        if (item) { item.revisao1ConcluidaEm = hoje; mensagem = `✅ Revisão 1 de "${item.pdfNome}" concluída! Próxima em ~30 dias.`; }
+      } else { est.revisao1ConcluidaEm = hoje; est.fase = FASES.REVISAO_2; }
+      proximaFase = est.fase;
       break;
     }
     case 'Revisão 2': {
-      est.revisao2ConcluidaEm = hoje;
-      est.fase = FASES.REVISAO_3;
-      mensagem = '✅ Revisão 2 concluída! Última revisão em ~60 dias.';
-      proximaFase = FASES.REVISAO_3;
+      if (ativ.revisaoPdfId && est.revisaoQueue) {
+        const item = est.revisaoQueue.find(q => q.pdfId === ativ.revisaoPdfId);
+        if (item) { item.revisao2ConcluidaEm = hoje; mensagem = `✅ Revisão 2 de "${item.pdfNome}" concluída! Última em ~60 dias.`; }
+      } else { est.revisao2ConcluidaEm = hoje; est.fase = FASES.REVISAO_3; }
+      proximaFase = est.fase;
       break;
     }
     case 'Revisão 3': {
-      est.revisao3ConcluidaEm = hoje;
-      est.fase = FASES.MANUTENCAO;
-      mensagem = '🎓 Ciclo completo! Este PDF vai para manutenção periódica (90d → 120d → 180d...).';
-      proximaFase = FASES.MANUTENCAO;
+      if (ativ.revisaoPdfId && est.revisaoQueue) {
+        const item = est.revisaoQueue.find(q => q.pdfId === ativ.revisaoPdfId);
+        if (item) { item.revisao3ConcluidaEm = hoje; mensagem = `🎓 Revisão 3 de "${item.pdfNome}" concluída! Material em manutenção.`; }
+        // Limpar entradas totalmente concluídas da fila
+        est.revisaoQueue = est.revisaoQueue.filter(q => !q.revisao3ConcluidaEm);
+      } else { est.revisao3ConcluidaEm = hoje; est.fase = FASES.MANUTENCAO; }
+      proximaFase = est.fase;
       break;
     }
 

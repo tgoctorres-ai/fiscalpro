@@ -851,16 +851,20 @@ function rDash(){
   document.getElementById('prox-num').textContent=`Meta ${metaNum+1}`;
   const prazoTotalMeta=(meta.prazoExtra||0)+7;
   document.getElementById('prox-data').textContent=fmt(addDias(meta.iniciada||td(),prazoTotalMeta));
+  // Horas totais (all-time para sc-horas) e média/dia da meta atual
   const totH=Object.values(S.sess||{}).reduce((s,v)=>s+(v.horas||0),0);
-  const dias=Object.values(S.sess||{}).filter(v=>v.horas>0).length;
+  const metaInic=meta.iniciada||td();
+  const sessMeta=Object.entries(S.sess||{}).filter(([d])=>d>=metaInic);
+  const horasMeta=sessMeta.reduce((s,[,v])=>s+(v.horas||0),0);
+  const diasMeta=sessMeta.filter(([,v])=>v.horas>0).length;
   const qs=(S.qs||[]).filter(q=>q.meta===metaNum);const totQ=qs.length;
   const desemp=totQ>0?Math.round(qs.filter(q=>q.pct>=70).length/totQ*100):0;
   const avgPct=totQ>0?Math.round(qs.reduce((s,q)=>s+(q.pct||0),0)/totQ):0;
   document.getElementById('sc-desemp').textContent=desemp+'%';
   document.getElementById('sc-qq').textContent=totQ>0?avgPct+'%':'—';
-  document.getElementById('sc-horas').textContent=fmtH(totH);
+  document.getElementById('sc-horas').textContent=fmtH(horasMeta);
 
-  document.getElementById('sc-media').textContent=fmtH(dias>0?totH/dias:0);
+  document.getElementById('sc-media').textContent=fmtH(diasMeta>0?horasMeta/diasMeta:0);
   const nA=ativs.filter(a=>!a.tipo.includes('Reforço')).length;const nR=ativs.filter(a=>a.tipo.includes('Reforço')).length;
   document.getElementById('cnt-ativ').textContent=nA;document.getElementById('cnt-ref').textContent=nR;
   rDashTabela();
@@ -979,15 +983,39 @@ function confirmarFin(){
   const res=Motor.finalizarAtividade(S,a,{horas:hr,minutos:min,questoesTotais:qtot,questoesAcertos:qac,paginasLidas,videosNaSessao});
   S=res.S;a.status='concluida';a.tempo=hr+min/60;
   if(videoNome!==null){a.videoNome=videoNome;const est=S.estadoMat?.[a.matId];if(est)est.ultimoVideo=videoNome;}
-  // Verificar transição de fase e avisar sobre próximo PDF
-  if(res.proximaFase==='mapeamento'){
-    const pdfsMateria=(S.pdfs||[]).filter(p=>p.matId===a.matId).sort((x,y)=>(x.ordem||0)-(y.ordem||0));
-    const est2=S.estadoMat?.[a.matId];const idxAtual=pdfsMateria.findIndex(p=>p.id===est2?.pdfAtual);
-    const proximoPdf=pdfsMateria[idxAtual+1];
+  // Auto-avanço de PDF: ao aprovar o Teste, ativar próximo PDF e enfileirar revisões
+  if(res.proximaFase==='revisao'||res.proximaFase==='revisao2'){
     setTimeout(()=>{
-      if(proximoPdf){showToast(`📗 Teoria concluída! Próximo passo: Mapeamento. Após o ciclo completo, ative "${proximoPdf.nome}".`,'ok');}
-      else if(idxAtual>=0){showToast('📗 Teoria concluída! Nenhum PDF seguinte cadastrado — cadastre o próximo para continuar.','err');}
-    },500);
+      const estAtual=S.estadoMat?.[a.matId];
+      if(!estAtual)return;
+      const pdfsOrdem=(S.pdfs||[]).filter(p=>p.matId===a.matId).sort((x,y)=>(x.ordem||0)-(y.ordem||0));
+      const idxAtual=pdfsOrdem.findIndex(p=>p.id===estAtual.pdfAtual);
+      const proximoPdf=pdfsOrdem[idxAtual+1];
+      // Salvar entrada de revisão ANTES de vincular próximo PDF
+      const entradaRevisao={pdfId:estAtual.pdfAtual,pdfNome:estAtual.pdfNome,
+        testeConcluidoEm:td(),revisao1ConcluidaEm:null,revisao2ConcluidaEm:null,revisao3ConcluidaEm:null};
+      if(proximoPdf){
+        // Ativar próximo PDF automaticamente
+        vincularPDFSilencioso(proximoPdf.id,entradaRevisao,a.matId);
+        showToast(`✅ Teste concluído! "${proximoPdf.nome}" ativado automaticamente. Revisões da ${entradaRevisao.pdfNome} serão agendadas no plano.`,'ok');
+      }else{
+        // Sem próximo PDF: manter em revisão e avisar
+        if(!estAtual.revisaoQueue)estAtual.revisaoQueue=[];
+        estAtual.revisaoQueue.push(entradaRevisao);
+        // Manter fase REVISAO para o fluxo antigo (sem próximo PDF)
+        showToast(`⚠️ Teste concluído! Cadastre o próximo PDF de ${a.matNome} para continuar estudando.`,'warn');
+      }
+      save();rDash();
+    },400);
+  }
+  // Aviso quando teoria quase acabando
+  if(a.tipo==='Teoria'){
+    const estT=S.estadoMat?.[a.matId];const pgSessaoT=Math.round(((S.horasDia||2)/2)*(S.pgPorHora||15));
+    if(estT&&(estT.pgTotal-estT.pgAtual)<=pgSessaoT){
+      const pdfsT=(S.pdfs||[]).filter(p=>p.matId===a.matId).sort((x,y)=>(x.ordem||0)-(y.ordem||0));
+      const idxT=pdfsT.findIndex(p=>p.id===estT.pdfAtual);
+      if(!pdfsT[idxT+1])setTimeout(()=>showToast(`⚠️ Teoria de ${a.matNome} quase no fim! Cadastre o próximo PDF antes de terminar.`,'warn'),600);
+    }
   }
   if(qtot!==null){a.questoesTotais=qtot;a.questoesAcertos=qac;a.desemp=res.pct;if(!S.qs)S.qs=[];if(qtot>0)S.qs.push({id:Date.now(),matId:a.matId,matNm:a.matNome,tot:qtot,ac:qac,pct:res.pct,tipo:a.tipo,data:td(),meta:paMetaNum});}
   const conc=meta.atividades.filter(x=>x.status==='concluida').length;
@@ -1138,6 +1166,23 @@ function editarPDF(id){const p=(S.pdfs||[]).find(x=>x.id===id);if(!p)return;edit
 function calcPDF(){const tot=parseInt(document.getElementById('pdf-tot').value)||0;const blocos=getBlocosTeo();const pg=Math.round(((S.horasDia||2)/2)*(S.pgPorHora||15));if(!tot||!blocos.length){document.getElementById('pdf-calc').classList.add('hidden');return;}const teo=blocos.reduce((s,b)=>s+(b.fim-b.ini+1),0);const lastFim=blocos[blocos.length-1].fim;const mapa=tot-lastFim;const sT=Math.ceil(teo/pg);const sM=1;const blocoStr=blocos.length>1?blocos.map((b,i)=>`Bloco ${i+1}: pág. ${b.ini}–${b.fim}`).join(' | '):`pág. ${blocos[0].ini}–${blocos[0].fim}`;document.getElementById('pdf-calc').textContent=`📊 ${teo} págs teoria (${blocoStr}, ~${sT} sessões) + ${mapa} págs mapeamento (~${sM} sessão) = ~${sT+sM} sessões`;document.getElementById('pdf-calc').classList.remove('hidden');}
 function salvarPDF(){const nm=document.getElementById('pdf-nm').value.trim();if(!nm){showToast('Informe o nome!','err');return;}if(!S.pdfs)S.pdfs=[];const _tipo=document.getElementById('pdf-tipo').value;let _blocos=[],_teo=0,_totalVids=0;if(_tipo==='videoaula'){_totalVids=parseInt(document.getElementById('pdf-total-videos').value)||0;if(!_totalVids){showToast('Informe o total de vídeos do módulo!','err');return;}}else{_blocos=getBlocosTeo();if(!_blocos.length){showToast('Informe ao menos um bloco de teoria!','err');return;}_teo=_blocos.reduce((s,b)=>s+(b.fim-b.ini+1),0);}const d={nome:nm,tipo:_tipo,matId:parseInt(document.getElementById('pdf-mat').value),pgTot:_tipo==='videoaula'?_totalVids:parseInt(document.getElementById('pdf-tot').value)||0,totalVideos:_tipo==='videoaula'?_totalVids:0,blocosTeo:_tipo==='videoaula'?[]:_blocos,pgInicio:_blocos[0]?.ini||0,pgFimTeoria:_blocos[_blocos.length-1]?.fim||0,pgTeoria:_tipo==='videoaula'?0:_teo,obs:document.getElementById('pdf-obs').value.trim(),ordem:parseInt(document.getElementById('pdf-ord').value)||1,concluido:false};if(editPDFId){const i=S.pdfs.findIndex(p=>p.id===editPDFId);if(i>=0)S.pdfs[i]={...S.pdfs[i],...d};}else S.pdfs.push({id:Date.now(),...d});save();fecharMod('mod-pdf');rPDFs();showToast('PDF salvo!');}
 function delPDF(id){if(!confirm('Excluir PDF?'))return;S.pdfs=(S.pdfs||[]).filter(p=>p.id!==id);save();rPDFs();}
+function vincularPDFSilencioso(id,entradaRevisao,matId){
+  // Vincula próximo PDF e preserva a fila de revisões do anterior
+  const pdf=(S.pdfs||[]).find(p=>p.id===id);if(!pdf)return;
+  if(!S.estadoMat)S.estadoMat={};
+  if(!S.estadoMat[pdf.matId])S.estadoMat[pdf.matId]=Motor.estadoMateria((S.mats||[]).find(m=>m.id===pdf.matId)||{id:pdf.matId,nome:'',peso:3,cor:'#f5a623'});
+  const est=S.estadoMat[pdf.matId];
+  // Preservar fila de revisões existente
+  const revisaoQueue=[...(est.revisaoQueue||[])];
+  if(entradaRevisao)revisaoQueue.push(entradaRevisao);
+  // Vincular novo PDF (reset estado)
+  est.pdfAtual=pdf.id;est.pdfNome=pdf.nome;
+  if(pdf.tipo==='videoaula'){est.pgTotal=pdf.totalVideos||0;est.pgMapeamento=0;est.totalVideos=pdf.totalVideos||0;est.videosAssistidos=0;est.blocosTeo=null;est.pgOffset=0;}
+  else{est.pgTotal=pdf.pgTeoria||pdf.pgTot||0;est.pgMapeamento=(pdf.pgTot||0)-(pdf.pgTeoria||0);est.blocosTeo=pdf.blocosTeo||null;est.pgOffset=pdf.blocosTeo?0:(pdf.pgInicio||1)-1;}
+  est.pgAtual=0;est.fase=Motor.FASES.TEORIA;
+  // Restaurar fila de revisões
+  est.revisaoQueue=revisaoQueue;
+}
 function vincularPDF(id){const pdf=(S.pdfs||[]).find(p=>p.id===id);if(!pdf)return;if(!S.estadoMat)S.estadoMat={};if(!S.estadoMat[pdf.matId])S.estadoMat[pdf.matId]=Motor.estadoMateria((S.mats||[]).find(m=>m.id===pdf.matId)||{id:pdf.matId,nome:'',peso:3,cor:'#f5a623'});const est=S.estadoMat[pdf.matId];est.pdfAtual=pdf.id;est.pdfNome=pdf.nome;if(pdf.tipo==='videoaula'){est.pgTotal=pdf.totalVideos||0;est.pgMapeamento=0;est.totalVideos=pdf.totalVideos||0;est.videosAssistidos=0;est.blocosTeo=null;est.pgOffset=0;}else{est.pgTotal=pdf.pgTeoria||pdf.pgTot||0;est.pgMapeamento=(pdf.pgTot||0)-(pdf.pgTeoria||0);est.blocosTeo=pdf.blocosTeo||null;est.pgOffset=pdf.blocosTeo?0:(pdf.pgInicio||1)-1;}est.pgAtual=0;est.fase=Motor.FASES.TEORIA;save();rPDFs();showToast(`"${pdf.nome}" vinculado!`,'ok');}
 
 // ══════════════════════════════════════════
@@ -1345,8 +1390,9 @@ function rCfg(){
     const opts=FASES_OPT.map(f=>`<option value="${f}"${f===fase?' selected':''}>${FASE_LABELS[f]||f}</option>`).join('');
     const lbl=isVid?`Vídeos assistidos (de ${totalVid} no módulo)`:`Páginas lidas (de ${pgTotal} de teoria)`;
     const sfx=isVid?`${pgAtual}/${totalVid} vídeos`:`${pgAtual}/${pgTotal} págs`;
-    return `<div style="border:1px solid var(--bdr);border-radius:6px;padding:8px 10px">
-      <div style="font-size:10px;font-weight:700;color:var(--fg);margin-bottom:6px">${m.nome} <span style="color:var(--muted);font-weight:400;font-size:9px">— ${pdfNome}</span></div>
+    const faseSugerida=(pgAtual>0&&pgAtual>=pgTotal&&fase==='teoria')?'⚠️ Fase deveria ser Mapeamento!':'';
+    return `<div style="border:1px solid ${faseSugerida?'var(--org)':'var(--bdr)'};border-radius:6px;padding:8px 10px">
+      <div style="font-size:10px;font-weight:700;color:var(--fg);margin-bottom:6px">${m.nome} <span style="color:var(--muted);font-weight:400;font-size:9px">— ${pdfNome}</span>${faseSugerida?`<span style="color:var(--org);font-size:8px;margin-left:6px">${faseSugerida}</span>`:''}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end">
         <div><label style="font-size:8px;color:var(--muted);display:block;margin-bottom:2px">${lbl}</label>
           <input type="number" class="fi corr-pg" data-matid="${m.id}" data-isvid="${isVid}" data-totalvid="${totalVid}" min="0" max="${pgTotal||totalVid}" value="${pgAtual}" style="width:100%;box-sizing:border-box"></div>
@@ -1374,6 +1420,7 @@ function salvarCorrecoes(){
       S.estadoMat[matId].totalVideos=totalVid2;
       S.estadoMat[matId].pgTotal=totalVid2;
       S.estadoMat[matId].videosAssistidos=pg;
+      S.estadoMat[matId].sessoesVideoaula=0; // reset para parar check antigo de questões periódicas
     }
     // Limpar datas de revisão se voltou para teoria/mapeamento
     if(['teoria','mapeamento'].includes(fase)){
